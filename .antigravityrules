@@ -1,0 +1,19 @@
+# Project Context
+- Building an Airbnb-style rental marketplace for Libya.
+- Primary Language: Arabic (ar-LY).
+- UI Direction: RTL (Right-to-Left).
+- Currency: Libyan Dinar (LYD).
+
+## Code Style & Stack
+
+- Frontend: Next.js (App Router), Tailwind CSS.
+- Backend: Supabase (PostgreSQL).
+- Icons: Lucide-React.
+- Maps: Leaflet.
+
+## Behavioral Rules
+
+- ALWAYS use dir="rtl" in HTML examples.
+- ALWAYS use Arabic dummy text (no Lorem Ipsum).
+- When defining database schema, use snake_case.
+- Use Tailwind logical properties (e.g., ms-4) for RTL support.
