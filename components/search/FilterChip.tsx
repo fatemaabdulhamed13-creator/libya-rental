@@ -6,11 +6,12 @@ interface FilterChipProps {
     label: string;
     isActive?: boolean;
     isOpen?: boolean;
+    noChevron?: boolean;
     onClick: () => void;
     onClear?: (e: React.MouseEvent) => void;
 }
 
-export default function FilterChip({ label, isActive, isOpen, onClick, onClear }: FilterChipProps) {
+export default function FilterChip({ label, isActive, isOpen, noChevron, onClick, onClear }: FilterChipProps) {
     return (
         <button
             onClick={onClick}
@@ -20,8 +21,8 @@ export default function FilterChip({ label, isActive, isOpen, onClick, onClear }
                 ${isActive
                     ? "border-primary bg-primary/10 text-primary"
                     : isOpen
-                    ? "border-gray-400 bg-gray-100 text-gray-900"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                        ? "border-gray-400 bg-gray-100 text-gray-900"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
                 }
             `}
         >
@@ -36,11 +37,11 @@ export default function FilterChip({ label, isActive, isOpen, onClick, onClear }
                 >
                     <X className="h-3.5 w-3.5" />
                 </span>
-            ) : (
+            ) : !noChevron ? (
                 <ChevronDown
                     className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
                 />
-            )}
+            ) : null}
         </button>
     );
 }

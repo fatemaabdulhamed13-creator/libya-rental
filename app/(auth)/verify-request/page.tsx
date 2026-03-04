@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,14 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Mail, CheckCircle } from "lucide-react";
 
 export default function VerifyRequestPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-gray-50" />}>
+            <VerifyRequestContent />
+        </Suspense>
+    );
+}
+
+function VerifyRequestContent() {
     const searchParams = useSearchParams();
     const email = searchParams.get("email");
 

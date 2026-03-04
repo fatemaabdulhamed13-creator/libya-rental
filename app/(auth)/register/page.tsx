@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertCircle, Info } from "lucide-react";
 
 export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-gray-50" />}>
+            <RegisterContent />
+        </Suspense>
+    );
+}
+
+function RegisterContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const supabase = createClient();

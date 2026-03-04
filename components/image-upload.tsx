@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2, ImagePlus, X } from "lucide-react";
-import Image from "next/image";
+import imageCompression from "browser-image-compression";
 
 interface ImageUploadProps {
     value: string[];
@@ -12,12 +12,17 @@ interface ImageUploadProps {
     bucket: string;
 }
 
+const COMPRESSION_OPTIONS = {
+    maxSizeMB: 0.5,          // cap at 500 KB
+    maxWidthOrHeight: 1920,  // no dimension above 1920 px
+    useWebWorker: true,      // non-blocking
+};
+
 export default function ImageUpload({ value, onChange, bucket }: ImageUploadProps) {
-    const [uploading, setUploading] = useState(false);
+    const [status, setStatus] = useState<"idle" | "compressing" | "uploading">("idle");
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         try {
-            setUploading(true);
             const supabase = createClient();
             const files = e.target.files;
             if (!files || files.length === 0) return;
@@ -25,42 +30,52 @@ export default function ImageUpload({ value, onChange, bucket }: ImageUploadProp
             const newUrls: string[] = [];
 
             for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const fileExt = file.name.split('.').pop();
+                const original = files[i];
+
+                // ── 1. Compress ──────────────────────────────────────────────
+                setStatus("compressing");
+                const compressed = await imageCompression(original, COMPRESSION_OPTIONS);
+
+                // ── 2. Upload compressed file ────────────────────────────────
+                setStatus("uploading");
+                const fileExt = original.name.split(".").pop() ?? "jpg";
                 const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-                const filePath = `${fileName}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from(bucket)
-                    .upload(filePath, file);
+                    .upload(fileName, compressed);
 
-                if (uploadError) {
-                    throw uploadError;
-                }
+                if (uploadError) throw uploadError;
 
-                const { data } = supabase.storage
-                    .from(bucket)
-                    .getPublicUrl(filePath);
-
-                if (data) {
-                    newUrls.push(data.publicUrl);
-                }
+                const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+                if (data) newUrls.push(data.publicUrl);
             }
 
             onChange([...value, ...newUrls]);
         } catch (error: any) {
-            alert("Error uploading image: " + error.message);
+            alert("خطأ في رفع الصورة: " + error.message);
         } finally {
-            setUploading(false);
+            setStatus("idle");
+            // Reset input so the same file can be re-selected if needed
+            e.target.value = "";
         }
     };
 
     const handleRemove = (url: string) => {
-        onChange(value.filter((val) => val !== url));
+        onChange(value.filter((v) => v !== url));
     };
+
+    const busy = status !== "idle";
+
+    const statusLabel = {
+        idle: "إضافة صور",
+        compressing: "جاري ضغط الصور...",
+        uploading: "جاري الرفع...",
+    }[status];
 
     return (
         <div className="space-y-4">
+            {/* Thumbnail grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {value.map((url) => (
                     <div key={url} className="relative aspect-video rounded-md overflow-hidden border">
@@ -71,11 +86,12 @@ export default function ImageUpload({ value, onChange, bucket }: ImageUploadProp
                                 variant="destructive"
                                 size="icon"
                                 className="h-6 w-6"
+                                disabled={busy}
                             >
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
-                        <img // Using img tag for simplicity with external URLs, or configure next/image domains
+                        <img
                             src={url}
                             alt="Property"
                             className="object-cover w-full h-full"
@@ -84,20 +100,24 @@ export default function ImageUpload({ value, onChange, bucket }: ImageUploadProp
                 ))}
             </div>
 
+            {/* Upload button */}
             <div className="flex items-center gap-4">
                 <Button
                     type="button"
-                    disabled={uploading}
+                    disabled={busy}
                     variant="secondary"
                     className="w-full h-32 border-dashed border-2 flex flex-col gap-2"
                     onClick={() => document.getElementById("image-upload")?.click()}
                 >
-                    {uploading ? (
+                    {busy ? (
                         <Loader2 className="h-6 w-6 animate-spin" />
                     ) : (
                         <ImagePlus className="h-6 w-6" />
                     )}
-                    <span>{uploading ? "جاري الرفع..." : "إضافة صور"}</span>
+                    <span className="text-sm">{statusLabel}</span>
+                    {status === "compressing" && (
+                        <span className="text-xs text-muted-foreground">يتم تقليل حجم الصور قبل الرفع</span>
+                    )}
                 </Button>
                 <input
                     id="image-upload"
@@ -106,7 +126,7 @@ export default function ImageUpload({ value, onChange, bucket }: ImageUploadProp
                     multiple
                     className="hidden"
                     onChange={handleUpload}
-                    disabled={uploading}
+                    disabled={busy}
                 />
             </div>
         </div>

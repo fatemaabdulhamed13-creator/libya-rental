@@ -33,6 +33,8 @@ const CITIES = [
 ];
 
 
+export const revalidate = 300; // re-validate every 5 minutes
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -40,25 +42,33 @@ export default async function HomePage({
 }) {
   const { category } = await searchParams;
 
-  // Re-use the same query builder for both sections, applying category filter if set
-  const baseQuery = () => {
-    let q = supabase
-      .from("properties")
-      .select("*")
-      .eq("status", "approved")
-      .limit(6);
-    if (category) q = q.eq("category", category);
-    return q;
-  };
+  // Build the family section query, honouring the category-bar filter
+  let familyQuery = supabase
+    .from("properties")
+    .select("*")
+    .eq("status", "approved")
+    .eq("family_friendly", true)
+    .order("created_at", { ascending: false })
+    .limit(6);
+  if (category) familyQuery = familyQuery.eq("category", category);
 
-  const [{ data: weekendData }, { data: familyData }, favoritedIds] = await Promise.all([
-    baseQuery().order("created_at", { ascending: false }),
-    baseQuery().order("created_at", { ascending: false }),
+  const [weekendResult, familyResult, favoritedIds] = await Promise.all([
+    // Weekend section: RPC returns properties with ≥1 free Thu/Fri/Sat in the next 30 days
+    // Cast to any: this function is not in the auto-generated Supabase types yet
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).rpc("get_weekend_available_properties", {
+      p_limit: 6,
+      p_category: category ?? null,
+    }),
+
+    // Family section: properties explicitly flagged as family-friendly
+    familyQuery,
+
     getFavoritedPropertyIds(),
   ]);
 
-  const weekendProperties = weekendData || [];
-  const familyProperties  = familyData  || [];
+  const weekendProperties = weekendResult.data || [];
+  const familyProperties = familyResult.data || [];
 
   return (
     <main className="min-h-screen bg-white" dir="rtl">
@@ -133,7 +143,7 @@ export default async function HomePage({
           <div className="container mx-auto px-4 md:px-6 lg:px-8 mb-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">عطلة نهاية الأسبوع</h2>
-              <Link href="/search?category=istiraha" className="text-primary hover:underline font-medium">
+              <Link href="/search?weekend=true" className="text-primary hover:underline font-medium">
                 عرض الكل
               </Link>
             </div>
@@ -160,7 +170,7 @@ export default async function HomePage({
           <div className="container mx-auto px-4 md:px-6 lg:px-8 mb-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl md:text-3xl font-bold text-foreground">مثالية للعائلات</h2>
-              <Link href="/search?family_friendly=true" className="text-primary hover:underline font-medium">
+              <Link href="/search?families=true" className="text-primary hover:underline font-medium">
                 عرض الكل
               </Link>
             </div>

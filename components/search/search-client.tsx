@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import FilterChips from "./FilterChips";
@@ -30,21 +31,35 @@ interface Property {
 }
 
 interface SearchMeta {
-    city?:     string;
-    checkIn?:  string;
+    city?: string;
+    checkIn?: string;
     checkOut?: string;
-    guests?:   string;
+    guests?: string;
 }
 
 interface SearchClientProps {
-    properties:   Property[];
+    properties: Property[];
     favoritedIds: Set<string>;
-    searchMeta?:  SearchMeta;
+    searchMeta?: SearchMeta;
 }
 
 export default function SearchClient({ properties, favoritedIds }: SearchClientProps) {
+    return (
+        <Suspense fallback={
+            <div className="h-screen flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <SearchClientInner properties={properties} favoritedIds={favoritedIds} />
+        </Suspense>
+    );
+}
+
+function SearchClientInner({ properties, favoritedIds }: SearchClientProps) {
     const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
     const [showMap, setShowMap] = useState(false);
+    const searchParams = useSearchParams();
+    const qs = searchParams.toString();
 
     return (
         <div className="h-screen flex flex-col bg-background" dir="rtl">
@@ -81,6 +96,7 @@ export default function SearchClient({ properties, favoritedIds }: SearchClientP
                                             isHovered={hoveredPropertyId === property.id}
                                             onHover={setHoveredPropertyId}
                                             initialFavorited={favoritedIds.has(property.id)}
+                                            searchString={qs}
                                         />
                                     ))}
                                 </div>
@@ -94,7 +110,7 @@ export default function SearchClient({ properties, favoritedIds }: SearchClientP
                     <SearchMap
                         properties={properties}
                         hoveredPropertyId={hoveredPropertyId}
-                        onPropertyClick={() => {}}
+                        onPropertyClick={() => { }}
                     />
                 </div>
             </div>
@@ -119,6 +135,7 @@ export default function SearchClient({ properties, favoritedIds }: SearchClientP
                                                 key={property.id}
                                                 property={property}
                                                 initialFavorited={favoritedIds.has(property.id)}
+                                                searchString={qs}
                                             />
                                         ))}
                                     </div>
@@ -131,7 +148,7 @@ export default function SearchClient({ properties, favoritedIds }: SearchClientP
                         <SearchMap
                             properties={properties}
                             hoveredPropertyId={hoveredPropertyId}
-                            onPropertyClick={() => {}}
+                            onPropertyClick={() => { }}
                         />
                     </div>
                 )}

@@ -50,8 +50,19 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
 export function useSearch() {
     const context = useContext(SearchContext);
+    // Return safe defaults if used outside a SearchProvider (e.g. during hydration on auth pages)
     if (context === undefined) {
-        throw new Error("useSearch must be used within a SearchProvider");
+        return {
+            location: "",
+            setLocation: () => { },
+            checkIn: null,
+            setCheckIn: () => { },
+            checkOut: null,
+            setCheckOut: () => { },
+            guests: 1,
+            setGuests: () => { },
+            resetSearch: () => { },
+        } as SearchContextType;
     }
     return context;
 }

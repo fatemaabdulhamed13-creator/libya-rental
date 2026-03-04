@@ -1,9 +1,13 @@
 "use client";
 
+// Opt out of Next.js Router Cache — prevents stale loading state on soft navigation
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { DayPicker, DateRange } from "react-day-picker";
+import nextDynamic from "next/dynamic";
+import type { DateRange } from "react-day-picker";
 import { format, eachDayOfInterval, parseISO } from "date-fns";
 import { ar } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +15,19 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, ArrowLeft, Loader2, X, CheckCircle2 } from "lucide-react";
 import "react-day-picker/dist/style.css";
+
+// Dynamically imported with ssr:false — avoids hydration mismatch on client-side navigation
+const DayPicker = nextDynamic(
+    () => import("react-day-picker").then((mod) => ({ default: mod.DayPicker })),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ),
+    }
+);
 
 interface BlockedDate {
     start_date: string;
@@ -31,6 +48,8 @@ export default function PropertyCalendarPage() {
     const [error, setError] = useState("");
 
     useEffect(() => {
+        // Guard: useParams() may return undefined on the first render during soft navigation
+        if (!propertyId) return;
         loadPropertyAndDates();
     }, [propertyId]);
 

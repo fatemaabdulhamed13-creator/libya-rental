@@ -272,7 +272,7 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
                     </div>
 
                     {/* Booking Widget */}
-                    <BookingWidget property={property} />
+                    <BookingWidget key={property.id} property={property} />
                 </div>
                 {/* Bottom spacer for mobile booking bar */}
                 <div className="h-20 md:hidden" />

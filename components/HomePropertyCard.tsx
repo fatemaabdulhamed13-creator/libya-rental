@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Home } from "lucide-react";
 import FavoriteButton from "./property/FavoriteButton";
+import { useSearchParams } from "next/navigation";
 
 interface HomePropertyCardProps {
   property: any;
@@ -11,11 +12,15 @@ interface HomePropertyCardProps {
 }
 
 export default function HomePropertyCard({ property, initialFavorited }: HomePropertyCardProps) {
+  const searchParams = useSearchParams();
+  const qs = searchParams.toString();
+  const href = `/properties/${property.id}${qs ? `?${qs}` : ""}`;
+
   return (
     <div className="flex-shrink-0 w-[75vw] md:w-72 group active:scale-95 transition-transform">
       {/* Image */}
       <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-muted">
-        <Link href={`/properties/${property.id}`}>
+        <Link href={href}>
           {property.images?.[0] ? (
             <Image
               src={property.images[0]}
@@ -43,7 +48,7 @@ export default function HomePropertyCard({ property, initialFavorited }: HomePro
       </div>
 
       {/* Info */}
-      <Link href={`/properties/${property.id}`}>
+      <Link href={href}>
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">

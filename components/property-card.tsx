@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function PropertyCard({ property, children }: { property: any; children: React.ReactNode }) {
     const [isFavorite, setIsFavorite] = useState(false);
+    const searchParams = useSearchParams();
+    const qs = searchParams.toString();
+    const href = `/properties/${property.id}${qs ? `?${qs}` : ""}`;
 
     return (
         <Link
-            href={`/properties/${property.id}`}
+            href={href}
             className="group block cursor-pointer active:scale-95 transition-transform"
         >
             {/* Image Container */}

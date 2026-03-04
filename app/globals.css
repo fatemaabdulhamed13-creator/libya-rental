@@ -163,6 +163,15 @@ html {
   background: #a1a1a1;
 }
 
+/* Utility: hide scrollbar while keeping scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE & Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;  /* Chrome, Safari, Opera */
+}
+
 /* Focus styles - Deep Teal */
 *:focus-visible {
   outline: 2px solid var(--primary);

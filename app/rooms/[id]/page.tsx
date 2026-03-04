@@ -230,7 +230,7 @@ export default function RoomDetailsPage() {
                     {/* Sidebar - Booking Widget */}
                     <div className="lg:col-span-1">
                         <div className="sticky top-24">
-                            <BookingForm property={property} />
+                            <BookingForm key={property.id} property={property} />
                         </div>
                     </div>
                 </div>

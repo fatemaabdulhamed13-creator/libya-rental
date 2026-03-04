@@ -1,16 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Star, CreditCard, Banknote, Calendar as CalendarIcon } from "lucide-react";
 import { eachDayOfInterval, parseISO, format } from "date-fns";
 import { ar } from "date-fns/locale";
-import { DayPicker, DateRange } from "react-day-picker";
+import type { DateRange } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { GuestSelector } from "@/components/property/BookingWidget";
+
+// Dynamic import with ssr:false — prevents hydration mismatch that breaks React state updates
+const DayPicker = dynamic(
+    () => import("react-day-picker").then((mod) => ({ default: mod.DayPicker })),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ),
+    }
+);
 
 function calculateDays(start: string, end: string) {
     const d1 = new Date(start);
@@ -30,19 +44,54 @@ export default function BookingForm({ property }: { property: any }) {
     const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
     const [paymentMethod, setPaymentMethod] = useState("cash");
     const [blockedDatesRaw, setBlockedDatesRaw] = useState<any[]>([]);
-    const [loadingDates, setLoadingDates] = useState(true);
+    // Start with false — the dynamic DayPicker import shows its own loader.
+    // We only flip to true when the fetch actually starts.
+    const [loadingDates, setLoadingDates] = useState(false);
     const [adults, setAdults] = useState(1);
     const [children, setChildren] = useState(0);
-    const maxGuests = property.max_guests || 10;
+    const maxGuests = property?.max_guests || 10;
 
-    // Fetch blocked dates on mount and restore dates from URL if present
+    // ── Fetch blocked dates ──────────────────────────────────────────────────
     useEffect(() => {
+        console.log("Calendar Debug - Property ID:", property?.id);
+
+        // Guard: if property ID is missing, bail immediately (no spinner)
+        if (!property?.id) {
+            setLoadingDates(false);
+            return;
+        }
+
+        let cancelled = false;
+
+        async function fetchBlockedDates() {
+            setLoadingDates(true);
+            try {
+                const supabaseClient = createClient();
+                const { data, error } = await (supabaseClient as any)
+                    .rpc("get_property_blocked_dates", { p_property_id: property.id });
+
+                if (cancelled) return; // component unmounted mid-fetch
+                if (error) throw error;
+
+                setBlockedDatesRaw(data || []);
+            } catch (err) {
+                if (!cancelled) console.error("Error fetching blocked dates:", err);
+            } finally {
+                if (!cancelled) setLoadingDates(false);
+            }
+        }
+
         fetchBlockedDates();
 
-        // Restore dates from URL params (after login redirect)
+        return () => { cancelled = true; };
+    }, [property?.id]);
+
+    // ── Restore search filters from URL params (separate effect) ─────────────
+    useEffect(() => {
         const urlStartDate = searchParams.get('checkIn');
         const urlEndDate = searchParams.get('checkOut');
         const urlAdults = searchParams.get('adults');
+        const urlGuests = searchParams.get('guests'); // search page uses 'guests'
         const urlChildren = searchParams.get('children');
         const urlPayment = searchParams.get('payment');
 
@@ -52,27 +101,12 @@ export default function BookingForm({ property }: { property: any }) {
                 to: new Date(urlEndDate)
             });
         }
-        if (urlAdults) setAdults(parseInt(urlAdults));
-        if (urlChildren) setChildren(parseInt(urlChildren));
+        // Support both 'adults' (booking redirect) and 'guests' (search page)
+        if (urlAdults) setAdults(parseInt(urlAdults, 10));
+        else if (urlGuests) setAdults(parseInt(urlGuests, 10));
+        if (urlChildren) setChildren(parseInt(urlChildren, 10));
         if (urlPayment) setPaymentMethod(urlPayment as "cash" | "bank_transfer");
-    }, [property.id, searchParams]);
-
-    async function fetchBlockedDates() {
-        setLoadingDates(true);
-        try {
-            const { data, error } = await (supabase as any)
-                .rpc("get_property_blocked_dates", { p_property_id: property.id });
-
-            if (error) throw error;
-
-            // Store raw data for calendar display
-            setBlockedDatesRaw(data || []);
-        } catch (err) {
-            console.error("Error fetching blocked dates:", err);
-        } finally {
-            setLoadingDates(false);
-        }
-    }
+    }, [searchParams]);
 
     // Convert blocked dates to Date objects for DayPicker.
     // Only confirmed bookings and host manual blocks disable dates.
@@ -264,30 +298,24 @@ export default function BookingForm({ property }: { property: any }) {
                         </h3>
                     </div>
                     <div className="p-4 calendar-container" dir="ltr">
-                        {loadingDates ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                        ) : (
-                            <DayPicker
-                                mode="range"
-                                selected={selectedRange}
-                                onSelect={setSelectedRange}
-                                disabled={[
-                                    { before: new Date() },
-                                    ...allBlockedDates
-                                ]}
-                                locale={ar}
-                                numberOfMonths={1}
-                                className="rdp-booking"
-                                modifiers={{
-                                    unavailable: allBlockedDates,
-                                }}
-                                modifiersClassNames={{
-                                    unavailable: "rdp-day-unavailable",
-                                }}
-                            />
-                        )}
+                        <DayPicker
+                            mode="range"
+                            selected={selectedRange}
+                            onSelect={setSelectedRange}
+                            disabled={[
+                                { before: new Date() },
+                                ...allBlockedDates
+                            ]}
+                            locale={ar}
+                            numberOfMonths={1}
+                            className="rdp-booking"
+                            modifiers={{
+                                unavailable: allBlockedDates,
+                            }}
+                            modifiersClassNames={{
+                                unavailable: "rdp-day-unavailable",
+                            }}
+                        />
                     </div>
 
                 </div>

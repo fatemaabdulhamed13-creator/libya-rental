@@ -4,18 +4,18 @@ import { getFavoritedPropertyIds } from "@/app/actions/favorites";
 
 // English-to-Arabic city name mapping for URL compatibility
 const CITY_MAP: Record<string, string> = {
-    tripoli:    "طرابلس",
-    benghazi:   "بنغازي",
-    misrata:    "مصراتة",
+    tripoli: "طرابلس",
+    benghazi: "بنغازي",
+    misrata: "مصراتة",
     "al-khoms": "الخمس",
-    alkhoms:    "الخمس",
-    khoms:      "الخمس",
-    zawiya:     "الزاوية",
-    zliten:     "زليتن",
-    gharyan:    "غريان",
-    bayda:      "البيضاء",
-    tobruk:     "طبرق",
-    sabha:      "سبها",
+    alkhoms: "الخمس",
+    khoms: "الخمس",
+    zawiya: "الزاوية",
+    zliten: "زليتن",
+    gharyan: "غريان",
+    bayda: "البيضاء",
+    tobruk: "طبرق",
+    sabha: "سبها",
 };
 
 function resolveCity(city: string): string {
@@ -26,13 +26,15 @@ function resolveCity(city: string): string {
 
 interface SearchPageProps {
     searchParams: Promise<{
-        city?:     string;
+        city?: string;
         category?: string;
-        guests?:   string;
-        checkIn?:  string;
+        guests?: string;
+        checkIn?: string;
         checkOut?: string;
         minPrice?: string;
         maxPrice?: string;
+        families?: string;  // "true" → family_friendly = true
+        weekend?: string;  // "true" → available on ≥1 Thu/Fri/Sat in next 30 days
     }>;
 }
 
@@ -56,6 +58,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         const g = parseInt(params.guests);
         if (!isNaN(g)) query = query.gte("max_guests", g);
     }
+    if (params.families === "true") {
+        query = query.eq("family_friendly", true);
+    }
     if (params.minPrice) {
         const min = parseInt(params.minPrice);
         if (!isNaN(min)) query = query.gte("price_per_night", min);
@@ -78,11 +83,27 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
     let results = properties || [];
 
+    // ── Weekend availability filtering ─────────────────────────────────────
+    // If weekend=true, use the RPC to get IDs of qualifying properties then
+    // intersect with the already-filtered results so other filters still apply.
+    if (params.weekend === "true" && results.length > 0) {
+        const { data: weekendData } = await (supabase as any).rpc(
+            "get_weekend_available_properties",
+            { p_limit: 100, p_category: params.category ?? null }
+        );
+        if (weekendData) {
+            const weekendIds = new Set<string>((weekendData as any[]).map((p) => p.id));
+            results = results.filter((p: any) => weekendIds.has(p.id));
+        } else {
+            results = [];
+        }
+    }
+
     // ── Availability filtering ─────────────────────────────────────────────
     // If dates are provided, exclude properties that have confirmed bookings
     // or host manual blocks overlapping those dates.
     if (params.checkIn && params.checkOut && results.length > 0) {
-        const checkIn  = params.checkIn;   // "yyyy-MM-dd"
+        const checkIn = params.checkIn;   // "yyyy-MM-dd"
         const checkOut = params.checkOut;  // "yyyy-MM-dd"
 
         // Fetch confirmed bookings and manual blocks in parallel
@@ -92,16 +113,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 .select("property_id")
                 .eq("status", "confirmed")
                 .lt("start_date", checkOut)
-                .gt("end_date",   checkIn),
+                .gt("end_date", checkIn),
             (supabase as any)
                 .from("availability")
                 .select("property_id")
                 .lt("start_date", checkOut)
-                .gt("end_date",   checkIn),
+                .gt("end_date", checkIn),
         ]);
 
         const unavailable = new Set<string>([
-            ...(bookedRows  || []).map((r: any) => r.property_id),
+            ...(bookedRows || []).map((r: any) => r.property_id),
             ...(blockedRows || []).map((r: any) => r.property_id),
         ]);
 
@@ -117,10 +138,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             properties={results}
             favoritedIds={favoritedIds}
             searchMeta={{
-                city:     params.city,
-                checkIn:  params.checkIn,
+                city: params.city,
+                checkIn: params.checkIn,
                 checkOut: params.checkOut,
-                guests:   params.guests,
+                guests: params.guests,
             }}
         />
     );

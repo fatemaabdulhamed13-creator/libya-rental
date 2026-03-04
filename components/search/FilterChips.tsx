@@ -31,25 +31,27 @@ function formatPriceLabel(min: string, max: string): string {
 }
 
 export default function FilterChips() {
-    const router      = useRouter();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const [openFilter, setOpenFilter] = useState<OpenFilter>(null);
 
     // URL state
-    const currentCity     = searchParams.get("city")     ?? "";
-    const currentCheckIn  = searchParams.get("checkIn")  ?? "";
+    const currentCity = searchParams.get("city") ?? "";
+    const currentCheckIn = searchParams.get("checkIn") ?? "";
     const currentCheckOut = searchParams.get("checkOut") ?? "";
-    const currentGuests   = searchParams.get("guests")   ?? "";
+    const currentGuests = searchParams.get("guests") ?? "";
     const currentMinPrice = searchParams.get("minPrice") ?? "";
     const currentMaxPrice = searchParams.get("maxPrice") ?? "";
+    const currentFamilies = searchParams.get("families") === "true";
+    const currentWeekend = searchParams.get("weekend") === "true";
 
     // Local pending state — reset to URL values whenever a chip is opened
-    const [city,     setCity]     = useState(currentCity);
-    const [checkIn,  setCheckIn]  = useState(currentCheckIn);
+    const [city, setCity] = useState(currentCity);
+    const [checkIn, setCheckIn] = useState(currentCheckIn);
     const [checkOut, setCheckOut] = useState(currentCheckOut);
-    const [guests,   setGuests]   = useState(currentGuests);
+    const [guests, setGuests] = useState(currentGuests);
     const [minPrice, setMinPrice] = useState(currentMinPrice);
     const [maxPrice, setMaxPrice] = useState(currentMaxPrice);
 
@@ -91,10 +93,10 @@ export default function FilterChips() {
     }
 
     // Apply handlers (called from dropdown button or bottom sheet apply button)
-    const applyCity   = () => pushParams({ city });
-    const applyDates  = () => pushParams({ checkIn, checkOut });
+    const applyCity = () => pushParams({ city });
+    const applyDates = () => pushParams({ checkIn, checkOut });
     const applyGuests = () => pushParams({ guests });
-    const applyPrice  = () => pushParams({ minPrice, maxPrice });
+    const applyPrice = () => pushParams({ minPrice, maxPrice });
 
     // Clear handlers (called from the X on the chip)
     function clearCity(e: React.MouseEvent) {
@@ -114,24 +116,33 @@ export default function FilterChips() {
         pushParams({ minPrice: "", maxPrice: "" });
     }
 
-    const cityLabel    = currentCity || "المدينة";
-    const datesLabel   = formatDateLabel(currentCheckIn, currentCheckOut);
-    const guestsLabel  = currentGuests ? `${currentGuests}+ ضيوف` : "الضيوف";
-    const priceLabel   = formatPriceLabel(currentMinPrice, currentMaxPrice);
+    const cityLabel = currentCity || "المدينة";
+    const datesLabel = formatDateLabel(currentCheckIn, currentCheckOut);
+    const guestsLabel = currentGuests ? `${currentGuests}+ ضيوف` : "الضيوف";
+    const priceLabel = formatPriceLabel(currentMinPrice, currentMaxPrice);
 
-    const hasDateFilter   = !!(currentCheckIn || currentCheckOut);
-    const hasPriceFilter  = !!(currentMinPrice || currentMaxPrice);
-    const hasAnyFilter    = !!(currentCity || hasDateFilter || currentGuests || hasPriceFilter);
+    const hasDateFilter = !!(currentCheckIn || currentCheckOut);
+    const hasPriceFilter = !!(currentMinPrice || currentMaxPrice);
+    const hasAnyFilter = !!(currentCity || hasDateFilter || currentGuests || hasPriceFilter || currentFamilies || currentWeekend);
+
+    function clearFamilies(e: React.MouseEvent) {
+        e.stopPropagation();
+        pushParams({ families: "" });
+    }
+    function clearWeekend(e: React.MouseEvent) {
+        e.stopPropagation();
+        pushParams({ weekend: "" });
+    }
 
     function clearAllFilters() {
-        pushParams({ city: "", checkIn: "", checkOut: "", guests: "", minPrice: "", maxPrice: "" });
+        pushParams({ city: "", checkIn: "", checkOut: "", guests: "", minPrice: "", maxPrice: "", families: "", weekend: "" });
     }
 
     return (
         <div ref={containerRef} className="bg-white border-b border-gray-200 z-30 relative">
             {/* ── Chips row ─────────────────────────────────────────────── */}
-            <div className="overflow-x-auto scrollbar-hide">
-                <div className="flex items-center gap-2 px-4 md:px-6 py-3 min-w-max" dir="rtl">
+            <div className="overflow-x-auto scrollbar-hide px-4 md:px-6 py-3">
+                <div className="flex items-center gap-2 min-w-max" dir="rtl">
 
                     <FilterChip
                         label={cityLabel}
@@ -163,6 +174,26 @@ export default function FilterChips() {
                         isOpen={openFilter === "price"}
                         onClick={() => openFilterPanel("price")}
                         onClear={hasPriceFilter ? clearPrice : undefined}
+                    />
+
+                    {/* Family-friendly chip — mirrors the homepage section filter */}
+                    <FilterChip
+                        label="مناسب للعائلات"
+                        isActive={currentFamilies}
+                        isOpen={false}
+                        noChevron
+                        onClick={() => pushParams({ families: currentFamilies ? "" : "true" })}
+                        onClear={currentFamilies ? clearFamilies : undefined}
+                    />
+
+                    {/* Weekend availability chip */}
+                    <FilterChip
+                        label="عطلة نهاية الأسبوع"
+                        isActive={currentWeekend}
+                        isOpen={false}
+                        noChevron
+                        onClick={() => pushParams({ weekend: currentWeekend ? "" : "true" })}
+                        onClear={currentWeekend ? clearWeekend : undefined}
                     />
 
                     {/* Clear All — only shown when at least one filter is active */}

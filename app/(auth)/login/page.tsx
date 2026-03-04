@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertCircle, Info } from "lucide-react";
 
 export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-gray-50" />}>
+            <LoginContent />
+        </Suspense>
+    );
+}
+
+function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const supabase = createClient();
@@ -48,18 +56,15 @@ export default function LoginPage() {
 
             if (error) throw error;
 
-            // Clear stored return URL
-            if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('returnUrl');
-            }
+            // Read destination synchronously — don't rely on async state
+            const paramRedirect = searchParams.get('redirect');
+            const storedRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('returnUrl') : null;
+            const destination = paramRedirect ? decodeURIComponent(paramRedirect) : (storedRedirect ?? "/");
 
-            // Redirect to stored URL or home
-            if (redirectUrl) {
-                router.push(redirectUrl);
-            } else {
-                router.push("/");
-            }
-            router.refresh();
+            if (typeof window !== 'undefined') sessionStorage.removeItem('returnUrl');
+
+            // Hard navigate: browser sends fresh auth cookie, server renders logged-in state immediately
+            window.location.href = destination;
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -100,7 +105,15 @@ export default function LoginPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">كلمة المرور</Label>
+                            <div className="flex items-baseline justify-between w-full" dir="rtl">
+                                <Label htmlFor="password">كلمة المرور</Label>
+                                <Link
+                                    href="/reset-password"
+                                    className="text-xs text-gray-400 hover:text-teal-700 underline-offset-4 hover:underline transition-colors"
+                                >
+                                    هل نسيت كلمة المرور؟
+                                </Link>
+                            </div>
                             <Input
                                 id="password"
                                 type="password"

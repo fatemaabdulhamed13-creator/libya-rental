@@ -18,9 +18,11 @@ interface PropertyCardProps {
     isHovered?: boolean;
     onHover?: (id: string | null) => void;
     initialFavorited?: boolean;
+    searchString?: string; // forwarded from SearchClient so useSearchParams() isn't needed here
 }
 
-export default function PropertyCard({ property, isHovered, onHover, initialFavorited = false }: PropertyCardProps) {
+export default function PropertyCard({ property, isHovered, onHover, initialFavorited = false, searchString = "" }: PropertyCardProps) {
+    const href = `/properties/${property.id}${searchString ? `?${searchString}` : ""}`;
     return (
         <div
             className={`
@@ -32,7 +34,7 @@ export default function PropertyCard({ property, isHovered, onHover, initialFavo
         >
             {/* Image */}
             <div className="relative aspect-[4/3] overflow-hidden bg-gray-200">
-                <Link href={`/properties/${property.id}`}>
+                <Link href={href}>
                     {property.images?.[0] ? (
                         <Image
                             src={property.images[0]}
@@ -60,7 +62,7 @@ export default function PropertyCard({ property, isHovered, onHover, initialFavo
             </div>
 
             {/* Content */}
-            <Link href={`/properties/${property.id}`} className="block p-4 bg-white">
+            <Link href={href} className="block p-4 bg-white">
                 {/* City Badge */}
                 <div className="flex items-center gap-2 mb-2">
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
