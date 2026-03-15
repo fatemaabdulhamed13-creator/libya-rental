@@ -130,7 +130,7 @@ export default function CreateListingPage() {
             // CRITICAL: Images are uploaded synchronously by ImageUpload component
             // The 'images' state already contains the full Supabase Storage URLs
             // No need to await here - they're already uploaded
-            const { data, error } = await (supabase.from("properties") as any).insert({
+            const { data, error } = await supabase.from("properties").insert({
                 host_id: user.id,
                 title: formData.title,
                 description: formData.description,

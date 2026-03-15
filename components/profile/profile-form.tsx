@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,7 @@ import { Loader2, Upload, ShieldCheck, TrendingUp, Star, User, Phone, Building2,
 import WhatsAppInput from "@/components/ui/WhatsAppInput";
 
 interface BankDetails {
+    [key: string]: string;
     bank_name: string;
     iban: string;
     account_name: string;
@@ -41,68 +43,54 @@ export default function ProfileForm() {
 
     useEffect(() => {
         const getProfile = async () => {
-            console.log("🔵 FETCHING PROFILE...");
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
+            try {
+                // Fetch profile via API route (service role — bypasses RLS SELECT issues)
+                const res = await fetch('/api/profile/me')
 
-            if (!session) {
-                console.log("❌ No session - redirecting to login");
-                router.push("/login");
-                return;
-            }
-
-            setUser(session.user);
-            console.log("✅ User authenticated:", session.user.id);
-
-            const { data: profile, error } = await (supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", session.user.id)
-                .single() as any);
-
-            // Handle 406 error (no profile row exists) or any other error
-            if (error) {
-                console.warn("⚠️ Profile fetch error (likely no profile row):", error);
-                console.log("📝 Treating as new user with empty profile");
-                // Set empty profile data for new user
-                setOriginalIsHost(false);
-                setFormData({
-                    full_name: "",
-                    phone_number: "",
-                    is_host: false,
-                    is_identity_verified: false,
-                    verification_status: "unverified",
-                    bank_details: {
-                        bank_name: "",
-                        iban: "",
-                        account_name: "",
-                    },
-                });
-            } else if (profile) {
-                console.log("✅ Profile loaded:", profile);
-                const isHost = profile.is_host || false;
-                setOriginalIsHost(isHost);
-                setFormData({
-                    full_name: profile.full_name || "",
-                    phone_number: profile.phone_number || "",
-                    is_host: isHost,
-                    is_identity_verified: profile.is_identity_verified || false,
-                    verification_status: profile.verification_status || "unverified",
-                    bank_details: (profile.bank_details as BankDetails) || {
-                        bank_name: "",
-                        iban: "",
-                        account_name: "",
-                    },
-                });
-                // Set preview if identity document exists
-                if (profile.identity_document_url) {
-                    setIdentityFilePreview(profile.identity_document_url);
+                if (res.status === 401) {
+                    router.push('/login')
+                    return
                 }
-            }
-            setLoading(false);
-        };
 
-        getProfile();
+                if (!res.ok) {
+                    console.error('[PROFILE] Failed to fetch profile:', res.status)
+                    setLoading(false)
+                    return
+                }
+
+                const { profile, userId } = await res.json()
+
+                // Set user object from the API response
+                setUser({ id: userId })
+
+                if (profile) {
+                    const isHost = profile.is_host || false
+                    setOriginalIsHost(isHost)
+                    setFormData({
+                        full_name: profile.full_name || '',
+                        phone_number: profile.phone_number || '',
+                        is_host: isHost,
+                        is_identity_verified: profile.is_identity_verified || false,
+                        verification_status: profile.verification_status || 'unverified',
+                        bank_details: (profile.bank_details as unknown as BankDetails) || {
+                            bank_name: '',
+                            iban: '',
+                            account_name: '',
+                        },
+                    })
+                    if (profile.identity_document_url) {
+                        setIdentityFilePreview(profile.identity_document_url)
+                    }
+                }
+                // If profile is null (new user), form stays at empty defaults — that's correct
+            } catch (err) {
+                console.error('[PROFILE] Unexpected error loading profile:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        getProfile()
     }, [router]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,229 +140,110 @@ export default function ProfileForm() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("🔵 SAVE STARTED");
-        console.log("User ID:", user?.id);
-        console.log("Original is_host:", originalIsHost);
-        console.log("Current form is_host:", formData.is_host);
-        console.log("Identity file selected:", !!identityFile);
-        console.log("Form data:", formData);
-
         setSaving(true);
 
         try {
             const supabase = createClient();
-
-            // Check if user is becoming a host (was not host before, is host now)
             const becomingHost = !originalIsHost && formData.is_host;
-            console.log("🟢 Becoming host?", becomingHost);
 
-            // STEP 1: Upsert basic profile info + is_host (without bank_details)
-            // Using upsert instead of update to handle missing profile rows
-            console.log("🔵 STEP 1: Upserting basic profile...");
-            const { data: step1Data, error: step1Error } = await (supabase
-                .from("profiles") as any)
-                .upsert({
-                    id: user.id, // Required for upsert
-                    full_name: formData.full_name,
-                    phone_number: formData.phone_number,
-                    is_host: formData.is_host,
-                })
-                .select();
-
-            if (step1Error) {
-                console.error("❌ STEP 1 FAILED:", step1Error);
-                alert("خطأ في تحديث البيانات الأساسية: " + step1Error.message);
-                setSaving(false);
-                return; // Don't throw - just stop execution
-            }
-
-            console.log("✅ STEP 1 SUCCESS:", step1Data);
-
-            // STEP 2: Handle ID upload if provided (Tier 2)
+            // ── STEP 1: Identity document upload ────────────────────────────────
             let identityDocumentUrl: string | null = null;
-            let verificationStatus = formData.verification_status || "unverified"; // Preserve existing status
+            let verificationStatus = formData.verification_status || "unverified";
 
-            // Upload ID if user is a host (new or existing) and selected a file
             if (formData.is_host && identityFile) {
-                console.log("🔵 STEP 2: Uploading identity document...");
-                console.log("File name:", identityFile.name);
-                console.log("File size:", identityFile.size);
                 setUploading(true);
-
                 try {
                     const fileExt = identityFile.name.split('.').pop();
-                    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-                    const filePath = `${user.id}/${fileName}`;
+                    const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
+                    const bucketName = 'property-images';
 
-                    console.log("📤 Uploading to path:", filePath);
-
-                    // TEMPORARY FIX: Use property-images bucket until identity-documents is created
-                    // TODO: Create 'identity-documents' bucket in Supabase and change back
-                    const bucketName = 'property-images'; // Change to 'identity-documents' after creating bucket
-
-                    // Upload file to storage
-                    const { data: uploadData, error: uploadError } = await supabase.storage
+                    const { error: uploadError } = await supabase.storage
                         .from(bucketName)
-                        .upload(filePath, identityFile, {
-                            cacheControl: '3600',
-                            upsert: false
-                        });
+                        .upload(filePath, identityFile, { cacheControl: '3600', upsert: false });
 
                     if (uploadError) {
-                        console.error("❌ ID Upload failed:", uploadError);
                         alert("فشل رفع الهوية: " + uploadError.message);
-                        setUploading(false);
-                        setSaving(false);
-                        return; // Stop execution
-                    } else {
-                        console.log("✅ ID uploaded successfully:", uploadData);
-
-                        // CRITICAL FIX: Generate public URL from the file path
-                        const { data: { publicUrl } } = supabase.storage
-                            .from(bucketName)
-                            .getPublicUrl(filePath);
-
-                        console.log("✅ Public URL generated:", publicUrl);
-
-                        // CRITICAL: Ensure URL is valid before proceeding
-                        if (!publicUrl || publicUrl === '') {
-                            console.error("❌ Public URL is empty!");
-                            alert("فشل في إنشاء رابط الهوية. يرجى المحاولة مرة أخرى.");
-                            setUploading(false);
-                            setSaving(false);
-                            return;
-                        }
-
-                        identityDocumentUrl = publicUrl;
-                        verificationStatus = "pending"; // Tier 2: Needs admin review
-                        console.log("✅ ID URL ready for database:", identityDocumentUrl);
+                        return;
                     }
-                } catch (uploadErr) {
-                    console.error("❌ Upload error:", uploadErr);
-                    alert("حدث خطأ أثناء رفع الهوية: " + (uploadErr as Error).message);
-                    setUploading(false);
-                    setSaving(false);
-                    return; // Stop execution
+
+                    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+                    if (!publicUrl) {
+                        alert("فشل في إنشاء رابط الهوية. يرجى المحاولة مرة أخرى.");
+                        return;
+                    }
+
+                    identityDocumentUrl = publicUrl;
+                    verificationStatus = "pending";
+                } catch (uploadErr: any) {
+                    alert("حدث خطأ أثناء رفع الهوية: " + uploadErr.message);
+                    return;
                 } finally {
                     setUploading(false);
                 }
             }
 
-            // STEP 3: Update bank_details and verification status if user is a host
+            // ── STEP 2: POST to our API route (same-origin — no CORS preflight) ──
+            // Direct Supabase writes from the browser hang because the network
+            // blocks OPTIONS preflight for non-GET requests to external origins.
+            // The API route at /api/profile/update calls Supabase server-side.
+            const body: Record<string, unknown> = {
+                full_name: formData.full_name,
+                phone_number: formData.phone_number,
+                is_host: formData.is_host,
+                bank_details: formData.is_host ? formData.bank_details : null,
+            }
             if (formData.is_host) {
-                console.log("🔵 STEP 3: Updating host data in database...");
-                console.log("Bank details to save:", formData.bank_details);
-                console.log("Verification status:", verificationStatus);
-                console.log("Identity document URL to save:", identityDocumentUrl);
+                body.verification_status = verificationStatus
+                if (identityDocumentUrl) body.identity_document_url = identityDocumentUrl
+            }
 
-                // Build update object
-                const updateData: any = {
-                    bank_details: formData.bank_details,
-                    verification_status: verificationStatus,
-                };
+            console.log('🔵 [PROFILE] Posting to /api/profile/update:', body)
 
-                // CRITICAL FIX: ALWAYS update identity_document_url if we have one
-                if (identityDocumentUrl) {
-                    updateData.identity_document_url = identityDocumentUrl;
-                    console.log("📝 Including identity_document_url in update");
-                }
+            const res = await fetch('/api/profile/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            })
 
-                console.log("📝 Final update object:", updateData);
+            const json = await res.json()
 
-                const { data: step3Data, error: step3Error } = await (supabase
-                    .from("profiles") as any)
-                    .update(updateData)
-                    .eq("id", user.id)
-                    .select();
+            if (!res.ok) {
+                console.error('❌ [PROFILE] API error:', json)
+                alert('خطأ في الحفظ: ' + (json.error ?? res.statusText) + (json.code ? '\n\nCode: ' + json.code : ''))
+                return
+            }
 
-                if (step3Error) {
-                    console.error("❌ STEP 3 FAILED:", step3Error);
-                    alert("خطأ في تحديث البيانات المصرفية: " + step3Error.message);
-                    setSaving(false);
-                    return; // Stop execution
-                }
+            console.log('✅ [PROFILE] API success:', json)
+            const savedData = json.data
 
-                console.log("✅ STEP 3 SUCCESS - Data returned:", step3Data);
+            // ── STEP 3: Sync local state ──────────────────────────────────────────
+            setOriginalIsHost(formData.is_host);
+            setIdentityFile(null);
 
-                // CRITICAL VERIFICATION: Check if the URL was actually saved
-                if (identityDocumentUrl) {
-                    const savedUrl = step3Data?.[0]?.identity_document_url;
-                    console.log("🔍 Verification: identity_document_url in DB:", savedUrl);
-
-                    if (!savedUrl) {
-                        console.error("⚠️⚠️⚠️ CRITICAL: identity_document_url was NOT saved to database!");
-                        alert("تحذير: تم رفع الملف ولكن فشل حفظ الرابط في قاعدة البيانات. يرجى المحاولة مرة أخرى.");
-                        setSaving(false);
-                        return; // Stop execution
-                    } else if (savedUrl !== identityDocumentUrl) {
-                        console.warn("⚠️ URL mismatch:", { expected: identityDocumentUrl, saved: savedUrl });
-                    } else {
-                        console.log("✅✅✅ ID URL successfully verified in database!");
-                    }
-                }
-
-                // Update local form state with saved data to prevent data loss
-                if (step3Data?.[0]) {
-                    setFormData(prev => ({
-                        ...prev,
-                        verification_status: step3Data[0].verification_status || prev.verification_status,
-                        is_identity_verified: step3Data[0].is_identity_verified || prev.is_identity_verified,
-                    }));
-
-                    // Update preview if URL was saved
-                    if (step3Data[0].identity_document_url) {
-                        setIdentityFilePreview(step3Data[0].identity_document_url);
-                    }
-                }
-            } else {
-                // Clear bank details if user unchecked host
-                console.log("🔵 STEP 3: Clearing bank details (user is not host)...");
-                const { error: clearError } = await (supabase
-                    .from("profiles") as any)
-                    .update({ bank_details: null })
-                    .eq("id", user.id);
-
-                if (clearError) {
-                    console.error("❌ Clear bank details failed:", clearError);
+            if (savedData) {
+                setFormData(prev => ({
+                    ...prev,
+                    verification_status: savedData.verification_status || prev.verification_status,
+                    is_identity_verified: savedData.is_identity_verified || prev.is_identity_verified,
+                }));
+                if (savedData.identity_document_url) {
+                    setIdentityFilePreview(savedData.identity_document_url);
                 }
             }
 
-            console.log("✅✅✅ ALL UPDATES SUCCESSFUL");
-
-            // Update the original host status so future saves work correctly
-            setOriginalIsHost(formData.is_host);
-
-            // Clear the file input since it's now saved
-            setIdentityFile(null);
-
-            // Show success message
             alert("تم حفظ التغييرات بنجاح ✓");
 
-            // If user just became a host, redirect to host dashboard after a delay
             if (becomingHost) {
-                console.log("🎉 USER BECAME HOST - REDIRECTING TO DASHBOARD");
-                setTimeout(() => {
-                    window.location.href = "/host/properties";
-                }, 1500); // Longer delay to ensure DB is updated
+                setTimeout(() => { window.location.href = "/host/properties"; }, 1500);
             } else {
-                // For regular saves, just refresh the navbar without reloading
-                console.log("📝 REGULAR SAVE - Refreshing navbar state");
-                // Trigger a navbar refresh by dispatching a custom event
                 window.dispatchEvent(new Event('profile-updated'));
             }
 
         } catch (error: any) {
-            console.error("❌❌❌ CRITICAL ERROR:", error);
-            console.error("Error details:", {
-                message: error.message,
-                details: error.details,
-                hint: error.hint,
-                code: error.code
-            });
-            alert("حدث خطأ أثناء الحفظ: " + error.message + "\n\nتحقق من Console للتفاصيل");
+            console.error('❌ [PROFILE] Unexpected error:', error);
+            alert("حدث خطأ غير متوقع: " + error.message);
         } finally {
             setSaving(false);
-            console.log("🔵 SAVE ENDED");
         }
     };
 

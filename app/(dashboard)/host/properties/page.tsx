@@ -20,8 +20,8 @@ export default function HostPropertiesPage() {
             if (!user) return;
 
             // Fetch user's verification status
-            const { data: profile } = await (supabase
-                .from("profiles") as any)
+            const { data: profile } = await supabase
+                .from("profiles")
                 .select("is_identity_verified")
                 .eq("id", user.id)
                 .single();

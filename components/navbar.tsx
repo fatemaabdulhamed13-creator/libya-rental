@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-const supabase = createClient();
 import { Button } from "@/components/ui/button";
 import { LogOut, UserCircle, Building2, Search, Menu, Plus, Shield, Bell, CalendarCheck } from "lucide-react";
 import NextImage from "next/image";
@@ -29,6 +28,7 @@ export default function Navbar() {
     const [pendingCount, setPendingCount] = useState(0);
     const { openModal } = useSearchModal();
     const { location, checkIn, checkOut, guests } = useSearch();
+    const supabase = createClient();
 
     // Pill label helpers
     const pillLocation = location ? location.split(" (")[0].trim() : "أي مكان";
@@ -42,8 +42,8 @@ export default function Navbar() {
     const isHomepage = pathname === '/';
 
     const fetchProfile = async (userId: string) => {
-        const { data } = await (supabase
-            .from("profiles") as any)
+        const { data } = await supabase
+            .from("public_profiles_view")
             .select("is_host")
             .eq("id", userId)
             .maybeSingle();
@@ -93,7 +93,7 @@ export default function Navbar() {
         }
 
         const loadCount = async () => {
-            const { count } = await (supabase as any)
+            const { count } = await supabase
                 .from("bookings")
                 .select("*", { count: "exact", head: true })
                 .eq("host_id", user.id)
@@ -148,14 +148,14 @@ export default function Navbar() {
                     <Link href="/" className="flex items-end gap-1 group">
                         <NextImage
                             src="/brand-logo-v1.png"
-                            alt="Libya Rental Logo"
+                            alt="استراحة"
                             width={55}
                             height={55}
                             className="object-contain group-hover:scale-105 transition-transform shrink-0"
                             priority
                         />
                         <span className="text-lg font-bold text-primary hidden sm:block">
-                            ليبيا رنتل
+                            استراحة
                         </span>
                     </Link>
 

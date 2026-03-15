@@ -20,8 +20,8 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
                 return;
             }
 
-            const { data: profile } = await (supabase as any)
-                .from("profiles")
+            const { data: profile } = await supabase
+                .from("public_profiles_view")
                 .select("is_host")
                 .eq("id", session.user.id)
                 .single();

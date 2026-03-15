@@ -43,12 +43,12 @@ export default function GuestTripsPage() {
         if (urls.length === 0) return;
 
         const supabase = createClient();
-        const { error } = await (supabase
-            .from("bookings") as any)
+        const { error } = await supabase
+            .from("bookings")
             .update({
                 payment_proof_url: urls[0],
-                status: 'host_verifying'
-            } as any)
+                status: 'host_verifying' as const
+            })
             .eq("id", bookingId);
 
         if (!error) {

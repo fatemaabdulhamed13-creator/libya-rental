@@ -1,0 +1,87 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Home, Heart, BriefcaseBusiness, User } from "lucide-react";
+
+const navItems = [
+    {
+        href: "/",
+        label: "الرئيسية",
+        icon: Home,
+        match: (p: string) => p === "/",
+    },
+    {
+        href: "/favorites",
+        label: "المفضلة",
+        icon: Heart,
+        match: (p: string) => p.startsWith("/favorites"),
+    },
+    {
+        href: "/guest/trips",
+        label: "رحلاتي",
+        icon: BriefcaseBusiness,
+        match: (p: string) => p.startsWith("/guest"),
+    },
+    {
+        href: "/profile",
+        label: "حسابي",
+        icon: User,
+        match: (p: string) => p.startsWith("/profile"),
+    },
+];
+
+export default function MobileNav() {
+    const pathname = usePathname();
+
+    return (
+        <nav
+            className="
+                fixed bottom-0 inset-x-0 z-50
+                md:hidden
+                bg-white/95 backdrop-blur-md
+                border-t border-gray-200
+                shadow-[0_-4px_20px_rgba(0,0,0,0.08)]
+                safe-area-pb
+            "
+            role="navigation"
+            aria-label="القائمة السفلية"
+        >
+            <div className="flex items-stretch justify-around h-16">
+                {navItems.map(({ href, label, icon: Icon, match }) => {
+                    const active = match(pathname);
+                    return (
+                        <Link
+                            key={href}
+                            href={href}
+                            className={`
+                                flex flex-col items-center justify-center gap-1
+                                flex-1 min-w-0 px-2
+                                text-[10px] font-semibold tracking-wide
+                                transition-colors duration-150
+                                ${active
+                                    ? "text-[#F59E0B]"
+                                    : "text-gray-400 hover:text-gray-600 active:text-[#F59E0B]"
+                                }
+                            `}
+                            aria-current={active ? "page" : undefined}
+                        >
+                            <span className="relative">
+                                <Icon
+                                    className={`h-6 w-6 transition-transform duration-150 ${active ? "scale-110" : ""}`}
+                                    strokeWidth={active ? 2.5 : 1.8}
+                                    fill={active && href === "/favorites" ? "#F59E0B" : "none"}
+                                />
+                                {/* Active dot indicator */}
+                                {active && (
+                                    <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-[#F59E0B]" />
+                                )}
+                            </span>
+                            <span className="truncate">{label}</span>
+                        </Link>
+                    );
+                })}
+            </div>
+        </nav>
+    );
+}

@@ -86,7 +86,7 @@ export async function toggleFavorite(propertyId: string) {
     console.log('   AND property_id =', propertyId);
   }
 
-  const { data: existingData, error: selectError } = await (supabase as any)
+  const { data: existingData, error: selectError } = await supabase
     .from('favorites')
     .select('id')
     .eq('user_id', userId)
@@ -123,7 +123,7 @@ export async function toggleFavorite(propertyId: string) {
       console.log('   AND property_id =', propertyId);
     }
 
-    const { data: deleteData, error: deleteError } = await (supabase as any)
+    const { data: deleteData, error: deleteError } = await supabase
       .from('favorites')
       .delete()
       .eq('user_id', userId)
@@ -168,7 +168,7 @@ export async function toggleFavorite(propertyId: string) {
     console.log('   property_id type:', typeof propertyId);
 
     // THIS IS THE CRITICAL LINE - Forces Supabase to return the inserted row
-    const { data: insertData, error: insertError } = await (supabase as any)
+    const { data: insertData, error: insertError } = await supabase
       .from('favorites')
       .insert(insertPayload)
       .select(); // ← CRITICAL: Forces return value
@@ -252,7 +252,7 @@ export async function getFavorites() {
 
   console.log('✅ Fetching favorites for user:', authData.user.id);
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('favorites')
     .select(`
       property_id,
@@ -317,7 +317,7 @@ export async function getFavoritedPropertyIds(): Promise<Set<string>> {
 
   if (!authData?.user) return new Set();
 
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from('favorites')
     .select('property_id')
     .eq('user_id', authData.user.id);

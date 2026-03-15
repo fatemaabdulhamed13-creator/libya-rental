@@ -60,7 +60,7 @@ export default function PropertyCalendarPage() {
         try {
             const supabase = createClient();
             // Fetch property details
-            const { data: propertyData, error: propertyError } = await (supabase as any)
+            const { data: propertyData, error: propertyError } = await supabase
                 .from("properties")
                 .select("*")
                 .eq("id", propertyId)
@@ -71,7 +71,7 @@ export default function PropertyCalendarPage() {
 
             // Fetch blocked dates using RPC function
             const { data: blockedData, error: blockedError } = await supabase
-                .rpc("get_property_blocked_dates", { p_property_id: propertyId } as any);
+                .rpc("get_property_blocked_dates", { p_property_id: propertyId });
 
             if (blockedError) throw blockedError;
             setBlockedDates(blockedData || []);
@@ -93,7 +93,7 @@ export default function PropertyCalendarPage() {
 
         try {
             const supabase = createClient();
-            const { error: insertError } = await (supabase as any)
+            const { error: insertError } = await supabase
                 .from("availability")
                 .insert({
                     property_id: propertyId,
@@ -116,7 +116,7 @@ export default function PropertyCalendarPage() {
     async function handleUnblockDates(blockId: string) {
         try {
             const supabase = createClient();
-            const { error: deleteError } = await (supabase as any)
+            const { error: deleteError } = await supabase
                 .from("availability")
                 .delete()
                 .eq("id", blockId);

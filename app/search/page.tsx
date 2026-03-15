@@ -42,7 +42,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     const params = await searchParams;
 
     // ── Base query ─────────────────────────────────────────────────────────
-    let query = (supabase as any)
+    let query = supabase
         .from("properties")
         .select("*")
         .eq("status", "approved")
@@ -87,7 +87,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     // If weekend=true, use the RPC to get IDs of qualifying properties then
     // intersect with the already-filtered results so other filters still apply.
     if (params.weekend === "true" && results.length > 0) {
-        const { data: weekendData } = await (supabase as any).rpc(
+        const { data: weekendData } = await supabase.rpc(
             "get_weekend_available_properties",
             { p_limit: 100, p_category: params.category ?? null }
         );
@@ -108,13 +108,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         // Fetch confirmed bookings and manual blocks in parallel
         const [{ data: bookedRows }, { data: blockedRows }] = await Promise.all([
-            (supabase as any)
+            supabase
                 .from("bookings")
                 .select("property_id")
                 .eq("status", "confirmed")
                 .lt("start_date", checkOut)
                 .gt("end_date", checkIn),
-            (supabase as any)
+            supabase
                 .from("availability")
                 .select("property_id")
                 .lt("start_date", checkOut)
@@ -137,12 +137,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         <SearchClient
             properties={results}
             favoritedIds={favoritedIds}
-            searchMeta={{
-                city: params.city,
-                checkIn: params.checkIn,
-                checkOut: params.checkOut,
-                guests: params.guests,
-            }}
         />
     );
 }

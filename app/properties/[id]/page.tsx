@@ -84,7 +84,7 @@ async function getProperty(id: string) {
         .from("properties")
         .select(`
       *,
-      host:profiles!host_id(full_name, avatar_url, phone_number, is_identity_verified, verification_status)
+      host:profiles!host_id(full_name, avatar_url, is_identity_verified, verification_status)
     `)
         .eq("id", id)
         .single();
@@ -93,7 +93,7 @@ async function getProperty(id: string) {
         console.error("Supabase error fetching property:", error.message, "| ID:", id);
         return null;
     }
-    return data as any;
+    return data;
 }
 
 export default async function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {

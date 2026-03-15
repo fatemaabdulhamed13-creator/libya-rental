@@ -62,7 +62,7 @@ export default function ChatWindow({ bookingId, currentUser, otherUser }: any) {
         const content = newMessage;
         setNewMessage(""); // Optimistic clear
 
-        const { error } = await (supabase.from("messages") as any).insert({
+        const { error } = await supabase.from("messages").insert({
             booking_id: bookingId,
             sender_id: currentUser.id,
             content: content,
@@ -95,7 +95,7 @@ export default function ChatWindow({ bookingId, currentUser, otherUser }: any) {
                 .getPublicUrl(filePath);
 
             // Send message with image
-            const { error: msgError } = await (supabase.from("messages") as any).insert({
+            const { error: msgError } = await supabase.from("messages").insert({
                 booking_id: bookingId,
                 sender_id: currentUser.id,
                 content: "Sent an image", // Placeholder text

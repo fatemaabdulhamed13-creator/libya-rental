@@ -30,17 +30,9 @@ interface Property {
     location_lng: number;
 }
 
-interface SearchMeta {
-    city?: string;
-    checkIn?: string;
-    checkOut?: string;
-    guests?: string;
-}
-
 interface SearchClientProps {
     properties: Property[];
     favoritedIds: Set<string>;
-    searchMeta?: SearchMeta;
 }
 
 export default function SearchClient({ properties, favoritedIds }: SearchClientProps) {

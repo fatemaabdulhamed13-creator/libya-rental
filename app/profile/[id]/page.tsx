@@ -37,7 +37,7 @@ interface Property {
 async function getProfile(id: string): Promise<Profile | null> {
     const supabase = await createClient();
     const { data, error } = await supabase
-        .from("profiles")
+        .from("public_profiles_view")
         .select("*")
         .eq("id", id)
         .single();

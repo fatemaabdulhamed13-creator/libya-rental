@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const supabase = createClient();
 
@@ -29,17 +28,13 @@ function LoginContent() {
     const [error, setError] = useState<string | null>(null);
     const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
-    // Check for redirect URL on mount
     useEffect(() => {
         const redirect = searchParams.get('redirect');
         if (redirect) {
             setRedirectUrl(decodeURIComponent(redirect));
-        } else if (typeof window !== 'undefined') {
-            // Fallback to sessionStorage
-            const storedUrl = sessionStorage.getItem('returnUrl');
-            if (storedUrl) {
-                setRedirectUrl(storedUrl);
-            }
+        } else {
+            const stored = sessionStorage.getItem('returnUrl');
+            if (stored) setRedirectUrl(stored);
         }
     }, [searchParams]);
 
@@ -48,28 +43,27 @@ function LoginContent() {
         setLoading(true);
         setError(null);
 
-        try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+        // Store the destination so SupabaseAuthListener can read it on SIGNED_IN
+        const paramRedirect = searchParams.get('redirect');
+        const storedRedirect = sessionStorage.getItem('returnUrl') ?? null;
+        const destination = paramRedirect
+            ? decodeURIComponent(paramRedirect)
+            : (storedRedirect ?? '/');
 
-            if (error) throw error;
+        // Write destination to sessionStorage so SupabaseAuthListener can use it
+        // (it redirects on SIGNED_IN when pathname === '/login')
+        if (destination !== '/') {
+            sessionStorage.setItem('returnUrl', destination);
+        }
 
-            // Read destination synchronously — don't rely on async state
-            const paramRedirect = searchParams.get('redirect');
-            const storedRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('returnUrl') : null;
-            const destination = paramRedirect ? decodeURIComponent(paramRedirect) : (storedRedirect ?? "/");
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-            if (typeof window !== 'undefined') sessionStorage.removeItem('returnUrl');
-
-            // Hard navigate: browser sends fresh auth cookie, server renders logged-in state immediately
-            window.location.href = destination;
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
+        if (error) {
+            setError(error.message);
             setLoading(false);
         }
+        // On success: SupabaseAuthListener catches SIGNED_IN and calls window.location.href = "/"
+        // Keep spinner until navigation completes.
     };
 
     return (
@@ -77,10 +71,9 @@ function LoginContent() {
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl font-bold text-primary">تسجيل الدخول</CardTitle>
-                    <CardDescription>أهلاً بك مجدداً في ليبيا رنتل</CardDescription>
+                    <CardDescription>أهلاً بك مجدداً في استراحة</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {/* Show message if redirected from booking */}
                     {redirectUrl && (
                         <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 text-sm p-3 rounded-md flex items-start gap-2">
                             <Info className="h-5 w-5 mt-0.5 shrink-0" />

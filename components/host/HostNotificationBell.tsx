@@ -35,7 +35,7 @@ export default function HostNotificationBell() {
             if (!user) return;
 
             // Count
-            const { count: c } = await (supabase as any)
+            const { count: c } = await supabase
                 .from("bookings")
                 .select("*", { count: "exact", head: true })
                 .eq("host_id", user.id)

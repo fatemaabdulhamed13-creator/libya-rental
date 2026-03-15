@@ -56,7 +56,7 @@ export default async function HomePage({
     // Weekend section: RPC returns properties with ≥1 free Thu/Fri/Sat in the next 30 days
     // Cast to any: this function is not in the auto-generated Supabase types yet
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).rpc("get_weekend_available_properties", {
+    supabase.rpc("get_weekend_available_properties", {
       p_limit: 6,
       p_category: category ?? null,
     }),
@@ -100,7 +100,7 @@ export default async function HomePage({
                 الإقامات في ليبيا
               </h1>
               <p className="text-lg md:text-xl text-white/80 drop-shadow-sm">
-                من شواطئ طرابلس إلى جبال نالوت، استمتع بإقامة مميزة مع ليبيا رنتل
+                من شواطئ طرابلس إلى جبال نالوت، استمتع بإقامة مميزة مع استراحة
               </p>
 
               {/* Hero Search Button - Opens Modal */}
@@ -229,7 +229,7 @@ export default async function HomePage({
       <footer className="border-t border-gray-200 py-8">
         <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <div className="text-center text-gray-500 text-sm">
-            <p>© 2024 ليبيا رنتل - جميع الحقوق محفوظة</p>
+            <p>© 2026 استراحة - جميع الحقوق محفوظة</p>
           </div>
         </div>
       </footer>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -12,12 +12,19 @@ import { createClient } from "@/lib/supabase/client";
  */
 export default function SupabaseAuthListener() {
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         const supabase = createClient();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event) => {
+                if (event === "SIGNED_IN" && (pathname === "/login" || pathname === "/register")) {
+                    // Redirect to homepage after login — do this here so no other
+                    // code races against it (e.g. router.refresh cancelling navigation).
+                    window.location.href = "/";
+                    return;
+                }
                 if (
                     event === "SIGNED_IN" ||
                     event === "SIGNED_OUT" ||
@@ -32,7 +39,7 @@ export default function SupabaseAuthListener() {
         return () => {
             subscription.unsubscribe();
         };
-    }, [router]);
+    }, [router, pathname]);
 
     // Renders nothing — purely a side-effect component
     return null;

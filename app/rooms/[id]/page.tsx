@@ -37,7 +37,7 @@ export default function RoomDetailsPage() {
         setLoading(true);
         try {
             // Fetch property
-            const { data: propertyData, error: propertyError } = await (supabase as any)
+            const { data: propertyData, error: propertyError } = await supabase
                 .from("properties")
                 .select("*")
                 .eq("id", propertyId)
@@ -47,13 +47,13 @@ export default function RoomDetailsPage() {
 
             // Fetch host profile
             if (propertyData?.host_id) {
-                const { data: hostData } = await (supabase
-                    .from("profiles") as any)
+                const { data: hostData } = await supabase
+                    .from("public_profiles_view")
                     .select("id, full_name, avatar_url, is_identity_verified, verification_status")
                     .eq("id", propertyData.host_id)
                     .single();
 
-                propertyData.host = hostData;
+                (propertyData as any).host = hostData;
             }
 
             setProperty(propertyData);

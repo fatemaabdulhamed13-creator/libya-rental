@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { signUpAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 
 export default function RegisterPage() {
     return (
@@ -19,9 +19,7 @@ export default function RegisterPage() {
 }
 
 function RegisterContent() {
-    const router = useRouter();
     const searchParams = useSearchParams();
-    const supabase = createClient();
 
     const [formData, setFormData] = useState({
         fullName: "",
@@ -31,6 +29,7 @@ function RegisterContent() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
     const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
     // Check for redirect URL on mount
@@ -55,74 +54,48 @@ function RegisterContent() {
         setLoading(true);
         setError(null);
 
-        try {
-            // 1. Sign up user
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`,
-                    data: {
-                        full_name: formData.fullName,
-                        phone_number: formData.phone,
-                    } as any,
-                },
-            });
+        const result = await signUpAction(formData.email, formData.password, {
+            full_name: formData.fullName,
+            phone_number: formData.phone,
+        });
 
-            if (authError) throw authError;
-
-            if (authData.user) {
-                // 2. Create Profile (Trigger might handle this, but explicit is safer for custom fields if trigger is basic)
-                // With the 'profiles' table extending auth.users via trigger, we might need to update it.
-                // Assuming the migration uses a trigger to create the profile row, we update it here.
-                // Or if no trigger, we insert it. Let's assume standard Supabase "User Management Starter" trigger exists or we do it manually.
-                // Given our schema, we should update the profile with the extra fields.
-
-                const { error: profileError } = await (supabase
-                    .from("profiles") as any)
-                    .update({
-                        full_name: formData.fullName,
-                        phone_number: formData.phone,
-                    })
-                    .eq("id", authData.user.id);
-
-                if (profileError) {
-                    // If update fails (maybe row doesn't exist yet due to race condition with trigger), try insert
-                    // Actually, best practice is to handle this in a Postgres Trigger.
-                    // For now, let's assume the user has set up the trigger or we just upsert.
-                    const { error: upsertError } = await supabase.from('profiles').upsert({
-                        id: authData.user.id,
-                        full_name: formData.fullName,
-                        phone_number: formData.phone,
-                        avatar_url: '',
-                    } as any)
-                    if (upsertError) console.error("Profile creation error:", upsertError);
-                }
-            }
-
-            // Redirect to verification page with return URL if present
-            const verifyUrl = redirectUrl
-                ? `/verify-request?email=${encodeURIComponent(formData.email)}&redirect=${encodeURIComponent(redirectUrl)}`
-                : `/verify-request?email=${encodeURIComponent(formData.email)}`;
-
-            router.push(verifyUrl);
-            router.refresh();
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
+        if ("error" in result) {
+            setError(result.error);
+        } else {
+            setSuccess(true);
         }
+
+        setLoading(false);
     };
+
+    if (success) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
+                <Card className="w-full max-w-md">
+                    <CardContent className="pt-8 pb-8 text-center">
+                        <CheckCircle2 className="h-14 w-14 text-green-500 mx-auto mb-4" />
+                        <h2 className="text-xl font-bold text-gray-900 mb-2">تحقق من بريدك الإلكتروني</h2>
+                        <p className="text-sm text-muted-foreground mb-1">
+                            أرسلنا رابط تأكيد إلى
+                        </p>
+                        <p className="text-sm font-semibold text-primary mb-4">{formData.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                            اضغط على الرابط في البريد لتفعيل حسابك والبدء.
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl font-bold text-primary">إنشاء حساب جديد</CardTitle>
-                    <CardDescription>انضم إلى مجتمع ليبيا رنتل</CardDescription>
+                    <CardDescription>انضم إلى مجتمع استراحة</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {/* Show message if redirected from booking */}
                     {redirectUrl && (
                         <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 text-sm p-3 rounded-md flex items-start gap-2">
                             <Info className="h-5 w-5 mt-0.5 shrink-0" />

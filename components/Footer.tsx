@@ -16,13 +16,13 @@ export default function Footer() {
                             <div className="bg-white rounded-xl p-1 inline-flex">
                                 <Image
                                     src="/brand-logo-v1.png"
-                                    alt="Libya Rental Logo"
+                                    alt="استراحة"
                                     width={40}
                                     height={40}
                                     className="object-contain"
                                 />
                             </div>
-                            <span className="text-lg font-bold text-white">ليبيا رنتل</span>
+                            <span className="text-lg font-bold text-white">استراحة</span>
                         </div>
                         <p className="text-sm text-gray-400 leading-relaxed">
                             بوابتك لأفضل الاستراحات والعقارات في ليبيا
@@ -76,7 +76,7 @@ export default function Footer() {
                 {/* ── Copyright bar ────────────────────────────────────────── */}
                 <div className="border-t border-[#2a5050] mt-10 pt-6 text-center">
                     <p className="text-xs text-gray-500">
-                        © {YEAR} ليبيا رنتل. جميع الحقوق محفوظة.
+                        © {YEAR} استراحة. جميع الحقوق محفوظة.
                     </p>
                 </div>
             </div>

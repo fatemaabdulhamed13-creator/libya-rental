@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import ChatWindow from "@/components/chat/chat-window";
 import Navbar from "@/components/navbar";
 
-export default async function ChatPage({ params }: { params: { bookingId: string } }) {
+export default async function ChatPage({ params }: { params: Promise<{ bookingId: string }> }) {
+    const { bookingId } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -12,7 +13,7 @@ export default async function ChatPage({ params }: { params: { bookingId: string
     }
 
     // Fetch booking to verify participation and get context
-    const { data: booking, error } = await (supabase as any)
+    const { data: booking, error } = await supabase
         .from("bookings")
         .select(`
         *,
@@ -20,7 +21,7 @@ export default async function ChatPage({ params }: { params: { bookingId: string
         guest:profiles!guest_id(full_name, avatar_url),
         host:profiles!host_id(full_name, avatar_url)
     `)
-        .eq("id", params.bookingId)
+        .eq("id", bookingId)
         .single();
 
     if (error || !booking) {

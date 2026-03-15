@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+    <title>تأكيد الحساب - استراحة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+</head>
+
+<body
+    style="margin:0;padding:0;background-color:#f9fafb;font-family:'Tajawal','Cairo',system-ui,-apple-system,sans-serif;direction:rtl;-webkit-font-smoothing:antialiased;">
+
+    <!-- ═══════════════════════════════════════ OUTER WRAPPER ═══════════════════════════════════════ -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+        style="background-color:#f9fafb;">
+        <tr>
+            <td align="center" style="padding:48px 16px 48px 16px;">
+
+                <!-- ═══════════════════════════════════════ CARD ═══════════════════════════════════════ -->
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+                    style="max-width:560px;width:100%;background-color:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+
+                    <!-- ─── LOGO HEADER ─────────────────────────────────────────────────────────────── -->
+                    <tr>
+                        <td style="padding:36px 48px 28px 48px;text-align:center;border-bottom:1px solid #f3f4f6;">
+                            <img src="https://istiraaha.com/logo.png" alt="استراحة" width="140"
+                                style="display:block;margin:0 auto;max-width:140px;height:auto;" />
+                        </td>
+                    </tr>
+
+                    <!-- ─── BODY ────────────────────────────────────────────────────────────────────── -->
+                    <tr>
+                        <td style="padding:40px 48px 36px 48px;text-align:right;">
+
+                            <!-- Greeting badge -->
+                            <p
+                                style="margin:0 0 20px 0;display:inline-block;background-color:#fff7ed;color:#ff6b00;font-size:13px;font-weight:700;padding:6px 14px;border-radius:50px;letter-spacing:0.2px;">
+                                مرحباً بك في استراحة
+                            </p>
+
+                            <!-- Main headline -->
+                            <h1
+                                style="margin:0 0 16px 0;font-size:28px;font-weight:800;color:#1f2937;line-height:1.35;letter-spacing:-0.3px;">
+                                يسعدنا انضمامك إلينا!
+                            </h1>
+
+                            <!-- Body text -->
+                            <p style="margin:0 0 14px 0;font-size:16px;font-weight:400;color:#4b5563;line-height:1.85;">
+                                شكراً لتسجيلك في <strong style="color:#1f2937;font-weight:700;">استراحة</strong> — وجهتك
+                                الأولى لاكتشاف أجمل الاستراحات والإقامات في ليبيا.
+                            </p>
+
+                            <p style="margin:0 0 36px 0;font-size:16px;font-weight:400;color:#4b5563;line-height:1.85;">
+                                خطوة واحدة تفصلك عن البدء. اضغط على الزر أدناه لتأكيد عنوان بريدك الإلكتروني وتفعيل
+                                حسابك.
+                            </p>
+
+                            <!-- ─── CTA BUTTON ─── -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0"
+                                style="margin:0 auto 36px auto;">
+                                <tr>
+                                    <td align="center" style="border-radius:50px;background-color:#ff6b00;">
+                                        <a href="{{ .ConfirmationURL }}" target="_blank"
+                                            style="display:inline-block;padding:16px 44px;font-family:'Tajawal','Cairo',system-ui,sans-serif;font-size:17px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:50px;mso-padding-alt:0;text-align:center;letter-spacing:0.2px;">
+                                            تأكيد البريد الإلكتروني
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Expiry note -->
+                            <p
+                                style="margin:0 0 24px 0;font-size:13px;color:#9ca3af;text-align:center;line-height:1.7;">
+                                ينتهي الرابط خلال <strong style="color:#6b7280;">24 ساعة</strong> من استلام هذا البريد
+                            </p>
+
+                            <!-- Divider -->
+                            <hr style="border:none;border-top:1px solid #f3f4f6;margin:0 0 24px 0;" />
+
+                            <!-- Fallback URL block -->
+                            <p style="margin:0 0 8px 0;font-size:13px;color:#9ca3af;line-height:1.7;">
+                                إذا لم يعمل الزر، انسخ الرابط التالي والصقه في متصفحك:
+                            </p>
+                            <p
+                                style="margin:0 0 28px 0;font-size:12px;color:#ff6b00;word-break:break-all;line-height:1.7;direction:ltr;text-align:left;background-color:#fff7ed;padding:10px 14px;border-radius:8px;border:1px solid #fed7aa;">
+                                {{ .ConfirmationURL }}
+                            </p>
+
+                            <!-- Security note -->
+                            <p
+                                style="margin:0;font-size:13px;color:#9ca3af;line-height:1.7;padding:14px 16px;background-color:#f9fafb;border-radius:10px;border:1px solid #f3f4f6;">
+                                🔒 إذا لم تقم بإنشاء هذا الحساب، يمكنك تجاهل هذا البريد بأمان.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- ─── FOOTER ───────────────────────────────────────────────────────────────────── -->
+                    <tr>
+                        <td style="background-color:#11322f;padding:32px 48px;text-align:center;">
+
+                            <!-- Logo (white version — use logo-white.png or overlay will darken it on dark bg) -->
+                            <img src="https://istiraaha.com/logo-white.png" alt="استراحة" width="100"
+                                style="display:block;margin:0 auto 14px auto;max-width:100px;height:auto;" />
+
+                            <p
+                                style="margin:0 0 4px 0;font-size:13px;color:#6ee7b7;line-height:1.6;font-family:'Tajawal','Cairo',system-ui,sans-serif;">
+                                استراحة — اكتشف أجمل الاستراحات في ليبيا
+                            </p>
+
+                            <p
+                                style="margin:0;font-size:12px;color:#4d9e8a;line-height:1.6;font-family:'Tajawal','Cairo',system-ui,sans-serif;">
+                                &copy; 2026 استراحة. جميع الحقوق محفوظة.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                </table>
+                <!-- /Card -->
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+
+</html>

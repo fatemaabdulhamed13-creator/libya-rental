@@ -196,17 +196,17 @@ export default function HostBookingsPage() {
     const panelAccept = async (b: BookingForPanel) => {
         const supabase = createClient();
         const newStatus = b.payment_method === "bank_transfer" ? "awaiting_payment" : "confirmed";
-        await (supabase.from("bookings") as any).update({ status: newStatus }).eq("id", b.id);
+        await supabase.from("bookings").update({ status: newStatus as any }).eq("id", b.id);
         await fetchBookings();
     };
     const panelDecline = async (id: string) => {
         const supabase = createClient();
-        await (supabase.from("bookings") as any).update({ status: "rejected" }).eq("id", id);
+        await supabase.from("bookings").update({ status: "rejected" }).eq("id", id);
         await fetchBookings();
     };
     const panelConfirmPayment = async (id: string) => {
         const supabase = createClient();
-        await (supabase.from("bookings") as any).update({ status: "confirmed" }).eq("id", id);
+        await supabase.from("bookings").update({ status: "confirmed" }).eq("id", id);
         await fetchBookings();
     };
 

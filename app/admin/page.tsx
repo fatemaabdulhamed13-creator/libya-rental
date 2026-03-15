@@ -99,7 +99,7 @@ export default function AdminDashboard() {
         try {
             const supabase = createClient();
 
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from("profiles")
                 .select(`
                     id,
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
             const supabase = createClient();
 
             // STEP 1: Fetch pending properties (no join to avoid users table)
-            const { data: properties, error: propError } = await (supabase as any)
+            const { data: properties, error: propError } = await supabase
                 .from("properties")
                 .select("id, title, city, price_per_night, images, status, host_id, created_at")
                 .eq("status", "pending")
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
             // STEP 2: Fetch host profiles separately (avoids users table completely)
             const hostIds = [...new Set((properties as any[]).map((p: any) => p.host_id).filter(Boolean))];
 
-            const { data: profiles, error: profileError } = await (supabase as any)
+            const { data: profiles, error: profileError } = await supabase
                 .from("profiles")
                 .select("id, full_name")
                 .in("id", hostIds);
@@ -164,7 +164,7 @@ export default function AdminDashboard() {
             if (profileError) {
                 console.warn("⚠️ Could not fetch host names:", profileError);
                 // Continue without host names
-                setPendingProperties((properties as any[]).map((p: any) => ({ ...p, host: { full_name: "Unknown" } })) as any);
+                setPendingProperties((properties as any[]).map((p: any) => ({ ...p, host: { full_name: "Unknown" } })) as PendingProperty[]);
                 return;
             }
 
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
             }));
 
             console.log("✅ Fetched pending properties:", enrichedProperties.length);
-            setPendingProperties(enrichedProperties as any);
+            setPendingProperties(enrichedProperties as PendingProperty[]);
         } catch (error: any) {
             console.error("❌ Exception in fetchPendingProperties:", error);
             alert("Error: " + error.message);
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
         try {
             const supabase = createClient();
 
-            const { error } = await (supabase as any)
+            const { error } = await supabase
                 .from("profiles")
                 .update({
                     verification_status: "verified",
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
         try {
             const supabase = createClient();
 
-            const { error } = await (supabase as any)
+            const { error } = await supabase
                 .from("profiles")
                 .update({
                     verification_status: "rejected",
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
 
             console.log("🔵 Approving property:", propertyId);
 
-            const { error } = await (supabase as any)
+            const { error } = await supabase
                 .from("properties")
                 .update({ status: "approved" })
                 .eq("id", propertyId);
@@ -294,7 +294,7 @@ export default function AdminDashboard() {
 
             console.log("🔵 Rejecting property:", propertyId);
 
-            const { error } = await (supabase as any)
+            const { error } = await supabase
                 .from("properties")
                 .update({ status: "rejected" })
                 .eq("id", propertyId);
@@ -384,11 +384,10 @@ export default function AdminDashboard() {
                 <div className="flex gap-2 mb-6 border-b border-gray-200">
                     <button
                         onClick={() => setActiveTab("users")}
-                        className={`px-6 py-3 font-semibold text-sm transition-all ${
-                            activeTab === "users"
+                        className={`px-6 py-3 font-semibold text-sm transition-all ${activeTab === "users"
                                 ? "border-b-2 border-primary text-primary"
                                 : "text-gray-600 hover:text-gray-900"
-                        }`}
+                            }`}
                     >
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="h-4 w-4" />
@@ -403,11 +402,10 @@ export default function AdminDashboard() {
 
                     <button
                         onClick={() => setActiveTab("properties")}
-                        className={`px-6 py-3 font-semibold text-sm transition-all ${
-                            activeTab === "properties"
+                        className={`px-6 py-3 font-semibold text-sm transition-all ${activeTab === "properties"
                                 ? "border-b-2 border-primary text-primary"
                                 : "text-gray-600 hover:text-gray-900"
-                        }`}
+                            }`}
                     >
                         <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
@@ -674,7 +672,7 @@ function AdminPropertyCard({ property, isProcessing, onApprove, onReject, onImag
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">📍 {property.city}</p>
                         <p className="text-sm text-gray-600">
-                            🏠 Host: {(property.host as any)?.full_name || "Unknown"}
+                            🏠 Host: {property.host?.full_name || "Unknown"}
                         </p>
                     </div>
 

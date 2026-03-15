@@ -78,7 +78,7 @@ export default function PropertyForm({ propertyId }: { propertyId?: string }) {
     async function fetchPropertyData() {
         setFetchingData(true);
         try {
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from("properties")
                 .select("*")
                 .eq("id", propertyId!)
@@ -158,8 +158,8 @@ export default function PropertyForm({ propertyId }: { propertyId?: string }) {
 
             if (propertyId) {
                 // UPDATE existing property
-                const { error } = await (supabase
-                    .from("properties") as any)
+                const { error } = await supabase
+                    .from("properties")
                     .update(propertyData)
                     .eq("id", propertyId);
 
@@ -170,7 +170,7 @@ export default function PropertyForm({ propertyId }: { propertyId?: string }) {
                 router.refresh();
             } else {
                 // INSERT new property
-                const { data, error } = await (supabase.from("properties") as any).insert({
+                const { data, error } = await supabase.from("properties").insert({
                     host_id: user.id,
                     ...propertyData,
                     status: 'pending', // CRITICAL: New properties need admin approval
