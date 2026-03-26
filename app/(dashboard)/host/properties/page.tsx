@@ -19,18 +19,18 @@ export default function HostPropertiesPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Fetch user's verification status
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("is_identity_verified")
-                .eq("id", user.id)
-                .single();
-
-            if (profile) {
-                setIsIdentityVerified(profile.is_identity_verified || false);
+            // Use API route (service role) so RLS doesn't block reading profile fields
+            const res = await fetch('/api/profile/me', { cache: 'no-store' });
+            if (res.ok) {
+                const { profile } = await res.json();
+                // Hide the banner if the user has already uploaded a document
+                // (pending or verified) — no need to nag them again
+                const hasDocument = !!profile?.identity_document_url;
+                const isVerified = !!profile?.is_identity_verified;
+                setIsIdentityVerified(hasDocument || isVerified);
             }
 
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from("properties")
                 .select("*")
                 .eq("host_id", user.id)
@@ -42,6 +42,7 @@ export default function HostPropertiesPage() {
 
         fetchProperties();
     }, []);
+
 
     return (
         <div className="space-y-6">

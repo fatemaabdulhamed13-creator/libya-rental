@@ -97,35 +97,19 @@ export default function AdminDashboard() {
     // Fetch pending ID verifications
     const fetchPendingVerifications = async () => {
         try {
-            const supabase = createClient();
-
-            const { data, error } = await supabase
-                .from("profiles")
-                .select(`
-                    id,
-                    full_name,
-                    phone_number,
-                    identity_document_url,
-                    verification_status,
-                    created_at
-                `)
-                .not("identity_document_url", "is", null)
-                .in("verification_status", ["pending", "unverified"])
-                .order("created_at", { ascending: false });
-
-            if (error) {
-                console.error("Error fetching pending verifications:", error);
-                return;
+            const res = await fetch('/api/admin/pending-profiles', { cache: 'no-store' })
+            if (!res.ok) {
+                console.error('Error fetching pending verifications:', await res.text())
+                return
             }
-
-            const profilesWithIds = (data || []).map((profile: any) => ({
+            const { profiles } = await res.json()
+            const profilesWithIds = (profiles || []).map((profile: any) => ({
                 ...profile,
-                email: profile.id.substring(0, 8) + "...",
-            }));
-
-            setPendingProfiles(profilesWithIds as PendingProfile[]);
+                email: profile.id.substring(0, 8) + '...',
+            }))
+            setPendingProfiles(profilesWithIds as PendingProfile[])
         } catch (error) {
-            console.error("Error in fetchPendingVerifications:", error);
+            console.error('Error in fetchPendingVerifications:', error)
         }
     };
 
@@ -189,27 +173,19 @@ export default function AdminDashboard() {
 
         setProcessingUserId(profileId);
         try {
-            const supabase = createClient();
-
-            const { error } = await supabase
-                .from("profiles")
-                .update({
-                    verification_status: "verified",
-                    is_identity_verified: true
-                })
-                .eq("id", profileId);
-
-            if (error) {
-                alert("Failed to approve: " + error.message);
-                return;
-            }
-
-            alert("✅ ID Approved Successfully!");
-            await fetchPendingVerifications();
+            const res = await fetch('/api/admin/pending-profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profileId, action: 'approve' }),
+            })
+            const json = await res.json()
+            if (!res.ok) { alert('Failed to approve: ' + json.error); return }
+            alert('✅ ID Approved Successfully!')
+            await fetchPendingVerifications()
         } catch (error: any) {
-            alert("Error: " + error.message);
+            alert('Error: ' + error.message)
         } finally {
-            setProcessingUserId(null);
+            setProcessingUserId(null)
         }
     };
 
@@ -219,27 +195,19 @@ export default function AdminDashboard() {
 
         setProcessingUserId(profileId);
         try {
-            const supabase = createClient();
-
-            const { error } = await supabase
-                .from("profiles")
-                .update({
-                    verification_status: "rejected",
-                    is_identity_verified: false
-                })
-                .eq("id", profileId);
-
-            if (error) {
-                alert("Failed to reject: " + error.message);
-                return;
-            }
-
-            alert("❌ ID Rejected");
-            await fetchPendingVerifications();
+            const res = await fetch('/api/admin/pending-profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profileId, action: 'reject' }),
+            })
+            const json = await res.json()
+            if (!res.ok) { alert('Failed to reject: ' + json.error); return }
+            alert('❌ ID Rejected')
+            await fetchPendingVerifications()
         } catch (error: any) {
-            alert("Error: " + error.message);
+            alert('Error: ' + error.message)
         } finally {
-            setProcessingUserId(null);
+            setProcessingUserId(null)
         }
     };
 
@@ -385,8 +353,8 @@ export default function AdminDashboard() {
                     <button
                         onClick={() => setActiveTab("users")}
                         className={`px-6 py-3 font-semibold text-sm transition-all ${activeTab === "users"
-                                ? "border-b-2 border-primary text-primary"
-                                : "text-gray-600 hover:text-gray-900"
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-gray-600 hover:text-gray-900"
                             }`}
                     >
                         <div className="flex items-center gap-2">
@@ -403,8 +371,8 @@ export default function AdminDashboard() {
                     <button
                         onClick={() => setActiveTab("properties")}
                         className={`px-6 py-3 font-semibold text-sm transition-all ${activeTab === "properties"
-                                ? "border-b-2 border-primary text-primary"
-                                : "text-gray-600 hover:text-gray-900"
+                            ? "border-b-2 border-primary text-primary"
+                            : "text-gray-600 hover:text-gray-900"
                             }`}
                     >
                         <div className="flex items-center gap-2">
@@ -554,7 +522,7 @@ function AdminUserCard({ profile, isProcessing, onApprove, onReject, onImageClic
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm text-gray-600">Submitted:</span>
                                     <span className="text-sm text-gray-900">
-                                        {new Date(profile.created_at).toLocaleDateString()}
+                                        {new Date(profile.created_at).toLocaleDateString('en-GB')}
                                     </span>
                                 </div>
                             </div>

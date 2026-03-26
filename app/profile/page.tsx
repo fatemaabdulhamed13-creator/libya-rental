@@ -1,6 +1,10 @@
 import ProfileForm from "@/components/profile/profile-form";
 import Navbar from "@/components/navbar";
 
+// Always render fresh — never cache one user's profile for another.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gray-50">

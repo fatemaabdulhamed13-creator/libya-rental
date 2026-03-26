@@ -20,11 +20,13 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
                 return;
             }
 
-            const { data: profile } = await supabase
-                .from("public_profiles_view")
-                .select("is_host")
-                .eq("id", session.user.id)
-                .single();
+            // Use the API route (service role) so RLS doesn't block reading is_host
+            const res = await fetch('/api/profile/me', { cache: 'no-store' });
+            if (!res.ok) {
+                router.push("/profile");
+                return;
+            }
+            const { profile } = await res.json();
 
             if (!profile?.is_host) {
                 router.push("/profile");
@@ -36,6 +38,7 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
 
         init();
     }, [router]);
+
 
     if (loading) {
         return (

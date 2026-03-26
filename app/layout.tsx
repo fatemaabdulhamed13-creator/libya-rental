@@ -48,7 +48,7 @@ export default function RootLayout({
       <body className={`${cairo.className} antialiased bg-gray-50 text-gray-900 flex flex-col min-h-screen`}>
         <SupabaseAuthListener />
         <SearchProvider>
-          <div className="flex-grow pb-16 md:pb-0">
+          <div className="flex-grow pb-24 md:pb-0">
             {children}
           </div>
         </SearchProvider>

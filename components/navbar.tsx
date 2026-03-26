@@ -41,17 +41,29 @@ export default function Navbar() {
 
     const isHomepage = pathname === '/';
 
-    const fetchProfile = async (userId: string) => {
-        const { data } = await supabase
-            .from("public_profiles_view")
-            .select("is_host")
-            .eq("id", userId)
-            .maybeSingle();
-        setProfile(data ?? null);
+    const fetchProfile = async (_userId: string) => {
+        try {
+            const res = await fetch('/api/profile/me', { cache: 'no-store' })
+            if (!res.ok) { setProfile(null); return }
+            const { profile } = await res.json()
+            setProfile(profile ?? null)
+        } catch {
+            setProfile(null)
+        }
     };
 
     // ── Auth state listener ────────────────────────────────────────────────
     useEffect(() => {
+        // Initial load: check session immediately (onAuthStateChange may fire
+        // before this component mounts, so we also pull the session directly)
+        const init = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
+            if (session?.user) await fetchProfile(session.user.id);
+            setLoading(false);
+        };
+        init();
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'TOKEN_REFRESHED') return;
 

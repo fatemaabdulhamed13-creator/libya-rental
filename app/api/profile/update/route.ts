@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
+// Must be dynamic — POST routes that read cookies cannot be cached.
+export const dynamic = 'force-dynamic'
+
 /**
  * POST /api/profile/update
  *
@@ -57,7 +60,9 @@ export async function POST(request: NextRequest) {
         }
 
         console.log('[API/profile/update] ✅ Saved profile for user:', user.id)
-        return NextResponse.json({ data })
+        return NextResponse.json({ data }, {
+            headers: { 'Cache-Control': 'no-store' },
+        })
 
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)

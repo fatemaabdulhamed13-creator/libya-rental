@@ -45,7 +45,7 @@ export default function ProfileForm() {
         const getProfile = async () => {
             try {
                 // Fetch profile via API route (service role — bypasses RLS SELECT issues)
-                const res = await fetch('/api/profile/me')
+                const res = await fetch('/api/profile/me', { cache: 'no-store' })
 
                 if (res.status === 401) {
                     router.push('/login')
@@ -159,28 +159,27 @@ export default function ProfileForm() {
 
                     const { error: uploadError } = await supabase.storage
                         .from(bucketName)
-                        .upload(filePath, identityFile, { cacheControl: '3600', upsert: false });
+                        .upload(filePath, identityFile, { cacheControl: '3600', upsert: true });
 
                     if (uploadError) {
-                        alert("فشل رفع الهوية: " + uploadError.message);
-                        return;
+                        console.error('❌ [PROFILE] Upload error:', uploadError);
+                        // throw so the outer finally always runs setSaving(false)
+                        throw new Error("فشل رفع الهوية: " + uploadError.message);
                     }
 
                     const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
                     if (!publicUrl) {
-                        alert("فشل في إنشاء رابط الهوية. يرجى المحاولة مرة أخرى.");
-                        return;
+                        throw new Error("فشل في إنشاء رابط الهوية. يرجى المحاولة مرة أخرى.");
                     }
 
                     identityDocumentUrl = publicUrl;
                     verificationStatus = "pending";
-                } catch (uploadErr: any) {
-                    alert("حدث خطأ أثناء رفع الهوية: " + uploadErr.message);
-                    return;
                 } finally {
+                    // Always release the upload spinner — even if we throw above
                     setUploading(false);
                 }
             }
+
 
             // ── STEP 2: POST to our API route (same-origin — no CORS preflight) ──
             // Direct Supabase writes from the browser hang because the network
@@ -199,18 +198,35 @@ export default function ProfileForm() {
 
             console.log('🔵 [PROFILE] Posting to /api/profile/update:', body)
 
-            const res = await fetch('/api/profile/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            })
+            // Abort after 15s so the form never hangs indefinitely
+            const controller = new AbortController()
+            const timeout = setTimeout(() => controller.abort(), 15_000)
+
+            let res: Response
+            try {
+                res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(body),
+                    signal: controller.signal,
+                })
+            } catch (fetchErr: any) {
+                clearTimeout(timeout)
+                if (fetchErr.name === 'AbortError') {
+                    throw new Error('انتهت مهلة الاتصال بالخادم (15 ثانية). تحقق من اتصالك بالإنترنت.')
+                }
+                throw fetchErr
+            }
+            clearTimeout(timeout)
+
+            console.log('🟡 [PROFILE] Got response status:', res.status)
 
             const json = await res.json()
 
             if (!res.ok) {
                 console.error('❌ [PROFILE] API error:', json)
-                alert('خطأ في الحفظ: ' + (json.error ?? res.statusText) + (json.code ? '\n\nCode: ' + json.code : ''))
-                return
+                throw new Error((json.error ?? res.statusText) + (json.code ? ' (Code: ' + json.code + ')' : ''))
             }
 
             console.log('✅ [PROFILE] API success:', json)
