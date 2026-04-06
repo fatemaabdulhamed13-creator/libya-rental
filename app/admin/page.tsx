@@ -116,54 +116,17 @@ export default function AdminDashboard() {
     // Fetch pending properties
     const fetchPendingProperties = async () => {
         try {
-            const supabase = createClient();
-
-            // STEP 1: Fetch pending properties (no join to avoid users table)
-            const { data: properties, error: propError } = await supabase
-                .from("properties")
-                .select("id, title, city, price_per_night, images, status, host_id, created_at")
-                .eq("status", "pending")
-                .order("created_at", { ascending: false });
-
-            if (propError) {
-                console.error("❌ Error fetching properties:", propError);
-                alert("Error loading properties: " + propError.message);
-                return;
+            const res = await fetch('/api/admin/pending-properties', { cache: 'no-store' })
+            if (!res.ok) {
+                const json = await res.json()
+                console.error('❌ Error fetching properties:', json)
+                return
             }
-
-            if (!properties || properties.length === 0) {
-                console.log("✅ No pending properties");
-                setPendingProperties([]);
-                return;
-            }
-
-            // STEP 2: Fetch host profiles separately (avoids users table completely)
-            const hostIds = [...new Set((properties as any[]).map((p: any) => p.host_id).filter(Boolean))];
-
-            const { data: profiles, error: profileError } = await supabase
-                .from("profiles")
-                .select("id, full_name")
-                .in("id", hostIds);
-
-            if (profileError) {
-                console.warn("⚠️ Could not fetch host names:", profileError);
-                // Continue without host names
-                setPendingProperties((properties as any[]).map((p: any) => ({ ...p, host: { full_name: "Unknown" } })) as PendingProperty[]);
-                return;
-            }
-
-            // STEP 3: Merge profiles with properties
-            const profilesMap = new Map((profiles as any[])?.map((p: any) => [p.id, p]) || []);
-            const enrichedProperties = (properties as any[]).map((prop: any) => ({
-                ...prop,
-                host: profilesMap.get(prop.host_id) || { full_name: "Unknown Host" }
-            }));
-
-            console.log("✅ Fetched pending properties:", enrichedProperties.length);
-            setPendingProperties(enrichedProperties as PendingProperty[]);
+            const { properties } = await res.json()
+            console.log('✅ Fetched pending properties:', properties?.length ?? 0)
+            setPendingProperties((properties ?? []) as PendingProperty[])
         } catch (error: any) {
-            console.error("❌ Exception in fetchPendingProperties:", error);
-            alert("Error: " + error.message);
+            console.error('❌ Exception in fetchPendingProperties:', error)
         }
     };
 
@@ -213,82 +176,50 @@ export default function AdminDashboard() {
 
     // Approve Property
     const handleApproveProperty = async (propertyId: string) => {
-        if (!confirm("Approve this property? It will go live on the homepage immediately.")) return;
+        if (!confirm('Approve this property? It will go live on the homepage immediately.')) return;
 
         setProcessingPropertyId(propertyId);
         try {
-            const supabase = createClient();
-
-            console.log("🔵 Approving property:", propertyId);
-
-            const { error } = await supabase
-                .from("properties")
-                .update({ status: "approved" })
-                .eq("id", propertyId);
-
-            if (error) {
-                console.error("❌ Approval failed:", error);
-                alert("Failed to approve: " + error.message);
-                setProcessingPropertyId(null);
-                return;
-            }
-
-            console.log("✅ Property approved successfully");
-
-            // Optimistically remove from pending list
-            setPendingProperties(prev => prev.filter(p => p.id !== propertyId));
-
-            // Show success and refresh
-            alert("✅ Property is now live! Visible on homepage.");
-
-            // Refresh the list to ensure sync
-            await fetchPendingProperties();
+            const res = await fetch('/api/admin/pending-properties', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ propertyId, action: 'approve' }),
+            })
+            const json = await res.json()
+            if (!res.ok) { alert('Failed to approve: ' + json.error); return }
+            setPendingProperties(prev => prev.filter(p => p.id !== propertyId))
+            alert('✅ Property is now live! Visible on homepage.')
+            await fetchPendingProperties()
         } catch (error: any) {
-            console.error("❌ Error:", error);
-            alert("Error: " + error.message);
+            console.error('❌ Error:', error)
+            alert('Error: ' + error.message)
         } finally {
-            setProcessingPropertyId(null);
+            setProcessingPropertyId(null)
         }
     };
 
     // Reject Property
     const handleRejectProperty = async (propertyId: string) => {
-        const reason = prompt("Reason for rejection (optional):");
-        if (reason === null) return; // User clicked cancel
+        const reason = prompt('Reason for rejection (optional):');
+        if (reason === null) return;
 
         setProcessingPropertyId(propertyId);
         try {
-            const supabase = createClient();
-
-            console.log("🔵 Rejecting property:", propertyId);
-
-            const { error } = await supabase
-                .from("properties")
-                .update({ status: "rejected" })
-                .eq("id", propertyId);
-
-            if (error) {
-                console.error("❌ Rejection failed:", error);
-                alert("Failed to reject: " + error.message);
-                setProcessingPropertyId(null);
-                return;
-            }
-
-            console.log("✅ Property rejected successfully");
-
-            // Optimistically remove from pending list
-            setPendingProperties(prev => prev.filter(p => p.id !== propertyId));
-
-            // Show confirmation and refresh
-            alert("❌ Property rejected" + (reason ? `: ${reason}` : ""));
-
-            // Refresh the list to ensure sync
-            await fetchPendingProperties();
+            const res = await fetch('/api/admin/pending-properties', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ propertyId, action: 'reject' }),
+            })
+            const json = await res.json()
+            if (!res.ok) { alert('Failed to reject: ' + json.error); return }
+            setPendingProperties(prev => prev.filter(p => p.id !== propertyId))
+            alert('❌ Property rejected' + (reason ? `: ${reason}` : ''))
+            await fetchPendingProperties()
         } catch (error: any) {
-            console.error("❌ Error:", error);
-            alert("Error: " + error.message);
+            console.error('❌ Error:', error)
+            alert('Error: ' + error.message)
         } finally {
-            setProcessingPropertyId(null);
+            setProcessingPropertyId(null)
         }
     };
 

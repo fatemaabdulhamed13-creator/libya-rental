@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,6 +78,7 @@ export default function PropertyForm({ propertyId }: { propertyId?: string }) {
     async function fetchPropertyData() {
         setFetchingData(true);
         try {
+            const supabase = createClient();
             const { data, error } = await supabase
                 .from("properties")
                 .select("*")
@@ -135,9 +136,6 @@ export default function PropertyForm({ propertyId }: { propertyId?: string }) {
         setLoading(true);
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("يجب تسجيل الدخول أولاً");
-
             // Map amenity IDs to labels for storage (to match Create Listing flow)
             const amenityLabels = amenities.map(id => {
                 const amenity = AMENITIES.find(a => a.id === id);
@@ -157,19 +155,25 @@ export default function PropertyForm({ propertyId }: { propertyId?: string }) {
             };
 
             if (propertyId) {
-                // UPDATE existing property
-                const { error } = await supabase
-                    .from("properties")
-                    .update(propertyData)
-                    .eq("id", propertyId);
+                // UPDATE via server API route (avoids browser-client auth issues & RLS)
+                const res = await fetch('/api/properties/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ propertyId, propertyData }),
+                });
 
-                if (error) throw error;
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error || 'فشل تحديث العقار');
 
                 alert("تم تحديث العقار بنجاح!");
                 router.push("/host/properties");
                 router.refresh();
             } else {
-                // INSERT new property
+                // INSERT new property — use SSR-aware browser client (reads cookie session)
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error("يجب تسجيل الدخول أولاً");
+
                 const { data, error } = await supabase.from("properties").insert({
                     host_id: user.id,
                     ...propertyData,
@@ -182,10 +186,7 @@ export default function PropertyForm({ propertyId }: { propertyId?: string }) {
                 const newPropertyId = data?.[0]?.id;
 
                 if (newPropertyId) {
-                    // Show success message
                     alert("تم إنشاء العقار بنجاح! الآن حدد التواريخ المتاحة.");
-
-                    // Redirect to calendar page
                     router.push(`/host/properties/${newPropertyId}/calendar`);
                 } else {
                     router.push("/host/properties");

@@ -75,13 +75,25 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
         };
     }, [isLightboxOpen, closeLightbox, goPrev, goNext]);
 
+    // Determine grid layout based on how many images we have
+    // 1 image: full width; 2-3: main + 1-2 side; 4-5: classic 2+4 bento
+    const sideImages = validImages.slice(1, 5);
+    const hasSides = sideImages.length > 0;
+    const gridCols = hasSides
+        ? sideImages.length === 1
+            ? "md:grid-cols-3"          // main takes 2/3, 1 side takes 1/3
+            : sideImages.length <= 3
+                ? "md:grid-cols-4"      // main 2 cols + up to 3 sides
+                : "md:grid-cols-4"      // full bento
+        : "grid-cols-1";               // single image: full width
+
     return (
         <>
-            {/* Bento Grid - 1 large + 4 small */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 h-[300px] md:h-[450px] mb-10 rounded-2xl overflow-hidden relative">
+            {/* Bento Grid — only renders slots that have images */}
+            <div className={`grid grid-cols-1 ${gridCols} gap-2 h-[300px] md:h-[450px] mb-10 rounded-2xl overflow-hidden relative`}>
                 {/* Main Large Image */}
                 <div
-                    className="md:col-span-2 md:row-span-2 relative group cursor-pointer"
+                    className={`${hasSides ? "md:col-span-2 md:row-span-2" : ""} relative group cursor-pointer`}
                     onClick={() => openLightbox(0)}
                 >
                     {validImages[0] ? (
@@ -99,24 +111,20 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                 </div>
 
-                {/* Secondary Images */}
-                {[1, 2, 3, 4].map((i) => (
+                {/* Secondary Images — only rendered when image exists */}
+                {sideImages.map((src, idx) => (
                     <div
-                        key={i}
+                        key={idx + 1}
                         className="relative group cursor-pointer hidden md:block"
-                        onClick={() => openLightbox(i)}
+                        onClick={() => openLightbox(idx + 1)}
                     >
-                        {validImages[i] ? (
-                            <Image
-                                src={validImages[i]}
-                                alt={`${title} - ${i + 1}`}
-                                fill
-                                sizes="25vw"
-                                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                            />
-                        ) : (
-                            <Placeholder size="sm" />
-                        )}
+                        <Image
+                            src={src}
+                            alt={`${title} - ${idx + 2}`}
+                            fill
+                            sizes="25vw"
+                            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                        />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                     </div>
                 ))}
@@ -132,6 +140,7 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                     </button>
                 )}
             </div>
+
 
             {/* ─── Lightbox Modal ─── */}
             {isLightboxOpen && validImages.length > 0 && (
@@ -199,8 +208,8 @@ export default function PropertyGallery({ images, title }: PropertyGalleryProps)
                                     key={i}
                                     onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
                                     className={`relative w-14 h-10 rounded-md overflow-hidden shrink-0 ring-2 transition-all ${i === lightboxIndex
-                                            ? "ring-white opacity-100 scale-105"
-                                            : "ring-transparent opacity-50 hover:opacity-80"
+                                        ? "ring-white opacity-100 scale-105"
+                                        : "ring-transparent opacity-50 hover:opacity-80"
                                         }`}
                                     aria-label={`صورة ${i + 1}`}
                                 >

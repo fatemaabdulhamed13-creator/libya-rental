@@ -220,21 +220,35 @@ export default function BookingForm({ property }: { property: any }) {
 
             if (error) throw error;
 
-            // After successful booking, redirect to WhatsApp immediately
-            if (booking && property.host?.phone_number) {
+            // Fetch host phone number server-side (service role bypasses RLS)
+            const hostId = property.host_id;
+            const phoneRes = await fetch(`/api/host/phone?hostId=${hostId}`);
+            const phoneJson = await phoneRes.json();
+            const hostPhone: string | null = phoneJson.phone_number ?? property.host?.phone_number ?? null;
+
+            if (booking && hostPhone) {
                 const bookingCode = booking.booking_code;
-                const cleanNumber = property.host.phone_number.replace(/[\s\-\(\)]/g, "");
 
-                const message = `مرحباً، أريد حجز ${property.title} من ${startDate} إلى ${endDate} - كود الحجز: ${bookingCode}`;
-                const encodedMessage = encodeURIComponent(message);
-                const whatsappUrl = `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
+                // Normalize Libyan numbers: strip spaces/dashes, replace leading 0 with 218
+                let cleanNumber = hostPhone.replace(/[\s\-\(\)\+]/g, "");
+                if (cleanNumber.startsWith("0")) cleanNumber = "218" + cleanNumber.slice(1);
 
-                // Use window.location.href to trigger native WhatsApp app on mobile
-                // This replaces the current page, making pending requests "invisible"
-                window.location.href = whatsappUrl;
+                const paymentLabel = paymentMethod === "bank_transfer" ? "تحويل بنكي" : "نقداً";
+                const message =
+                    `مرحباً،\n` +
+                    `أريد الاستفسار عن حجز: ${property.title}\n` +
+                    `من: ${startDate} الى: ${endDate}\n` +
+                    `عدد الضيوف: ${totalGuests}\n` +
+                    `الاجمالي: ${totalPrice} د.ل (${paymentLabel})\n` +
+                    `كود الحجز: ${bookingCode}`;
+
+                const whatsappUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+
+                // Open WhatsApp in a new tab
+                window.open(whatsappUrl, "_blank", "noopener,noreferrer");
             } else {
-                // Fallback if no phone number (shouldn't happen)
-                alert("تم إنشاء طلب الحجز بنجاح!");
+                // Host hasn't added a phone number — still confirm the booking
+                alert("✅ تم إرسال طلب الحجز!\nلم يتم العثور على رقم واتساب للمضيف. سيتواصل معك المضيف قريباً.");
             }
 
         } catch (error: any) {

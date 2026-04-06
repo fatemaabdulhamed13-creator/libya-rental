@@ -128,8 +128,8 @@ export default function BookingDetailPanel({
                     </div>
                 )}
 
-                {/* Cover photo */}
-                <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-gray-100">
+                {/* Cover photo — shorter on mobile so buttons stay visible */}
+                <div className="relative w-full h-36 md:aspect-video rounded-2xl overflow-hidden bg-gray-100">
                     {coverImage ? (
                         <Image
                             src={coverImage}
@@ -243,7 +243,7 @@ export default function BookingDetailPanel({
 
             {/* ── Fixed action buttons ─────────────────────────────────────── */}
             {isPending && (
-                <div className="shrink-0 px-5 py-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-3">
+                <div className="shrink-0 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white grid grid-cols-2 gap-3">
                     <button
                         onClick={handleAccept}
                         disabled={!!actionLoading}
@@ -270,7 +270,7 @@ export default function BookingDetailPanel({
             )}
 
             {booking.status === "host_verifying" && (
-                <div className="shrink-0 px-5 py-4 border-t border-gray-100 bg-white">
+                <div className="shrink-0 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white">
                     <button
                         onClick={handleConfirm}
                         disabled={!!actionLoading}
@@ -293,7 +293,7 @@ export default function BookingDetailPanel({
             <Drawer.Root open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
                 <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
-                    <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl max-h-[92dvh] focus:outline-none">
+                    <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-white rounded-t-3xl max-h-[96dvh] focus:outline-none">
                         {/* Drag handle */}
                         <div className="mx-auto mt-3 mb-1 w-10 h-1.5 rounded-full bg-gray-300 shrink-0" />
                         <div className="flex-1 overflow-hidden flex flex-col">

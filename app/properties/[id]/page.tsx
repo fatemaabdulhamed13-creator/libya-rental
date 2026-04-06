@@ -1,4 +1,5 @@
-import { supabase } from "@/lib/supabase";
+import { createClient as createServiceClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 import {
     MapPin,
     Star,
@@ -80,11 +81,16 @@ function getAmenityIcon(amenity: string) {
 }
 
 async function getProperty(id: string) {
-    const { data, error } = await supabase
+    // Use service role so the host profiles join always succeeds regardless of RLS
+    const serviceClient = createServiceClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const { data, error } = await serviceClient
         .from("properties")
         .select(`
       *,
-      host:profiles!host_id(full_name, avatar_url, is_identity_verified, verification_status)
+      host:profiles!host_id(full_name, avatar_url, is_identity_verified, verification_status, phone_number)
     `)
         .eq("id", id)
         .single();
@@ -133,11 +139,11 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
             <Navbar />
 
             <main className="container mx-auto px-4 md:px-6 lg:px-8 py-6">
-                {/* Property Gallery - Images First */}
+                {/* Gallery */}
                 <PropertyGallery images={property.images || []} title={property.title} />
 
-                {/* Title Section - Below Gallery */}
-                <div className="mb-8">
+                {/* Title + meta */}
+                <div className="border-b border-gray-200 pb-6 mb-0">
                     <div className="flex flex-wrap items-center gap-3 mb-2">
                         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">{property.title}</h1>
                         {property.category && categoryConfig[property.category] && (() => {
@@ -173,41 +179,78 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
                         <PropertyActions propertyId={property.id} initialFavorited={initialFavorited} />
                     </div>
 
-                    {/* Compact Stats Row */}
+                    {/* Quick stats */}
                     <div className="flex flex-wrap items-center gap-6 mt-4">
                         <div className="flex items-center gap-1.5">
-                            <Users className="h-6 w-6 text-secondary" />
+                            <Users className="h-5 w-5 text-secondary" />
                             <span className="text-gray-700 font-medium">{property.max_guests || 4} ضيوف</span>
                         </div>
                         <span className="text-gray-300">•</span>
                         <div className="flex items-center gap-1.5">
-                            <BedDouble className="h-6 w-6 text-secondary" />
+                            <BedDouble className="h-5 w-5 text-secondary" />
                             <span className="text-gray-700 font-medium">{property.bedrooms || 2} غرفة نوم</span>
                         </div>
                         <span className="text-gray-300">•</span>
                         <div className="flex items-center gap-1.5">
-                            <Bath className="h-6 w-6 text-secondary" />
+                            <Bath className="h-5 w-5 text-secondary" />
                             <span className="text-gray-700 font-medium">{property.bathrooms || 1} حمام</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 mt-8">
                     {/* Details Column */}
-                    <div className="lg:col-span-2 space-y-8">
+                    <div className="lg:col-span-2 space-y-0">
 
-                        {/* Description */}
+                        {/* ① Host Card — elevated, right below title */}
                         <div className="pb-8 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900 mt-6 mb-4">عن هذا المكان</h2>
+                            <h2 className="text-xl font-semibold text-gray-900 mb-4">تعرّف على المضيف</h2>
+                            <Link
+                                href={`/profile/${property.host_id}`}
+                                className="flex items-center gap-4 p-4 rounded-2xl border border-gray-200 hover:border-primary/50 hover:shadow-md transition-all group"
+                            >
+                                {property.host?.avatar_url ? (
+                                    <img
+                                        src={property.host.avatar_url}
+                                        alt={property.host?.full_name || "المضيف"}
+                                        className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20 shrink-0"
+                                    />
+                                ) : (
+                                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20 shrink-0">
+                                        <User className="h-7 w-7 text-primary" />
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <span className="text-base font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                                            {property.host?.full_name || "مضيف"}
+                                        </span>
+                                        {property.host?.is_identity_verified && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+                                                <BadgeCheck className="h-3.5 w-3.5" />
+                                                موثّق
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-gray-500 group-hover:text-secondary transition-colors">
+                                        عرض الملف الشخصي وجميع عقاراته ←
+                                    </p>
+                                </div>
+                            </Link>
+                        </div>
+
+                        {/* ② About */}
+                        <div className="py-8 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900 mb-4">عن هذا المكان</h2>
                             <p className="text-gray-600 leading-relaxed whitespace-pre-line text-base text-right">
                                 {property.description || "مكان مريح ومجهز بالكامل لإقامة مميزة. يتميز بموقع استراتيجي وتصميم عصري يجمع بين الأناقة والراحة."}
                             </p>
                         </div>
 
-                        {/* Amenities */}
-                        <div className="pb-8 border-b border-gray-200">
-                            <h2 className="text-xl font-semibold text-gray-900 mb-6">ما يقدمه هذا المكان</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {/* ③ Amenities */}
+                        <div className="py-8 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900 mb-5">ما يقدمه هذا المكان</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {property.amenities?.map((amenity: string) => {
                                     const IconComponent = getAmenityIcon(amenity);
                                     return (
@@ -220,52 +263,11 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
                             </div>
                         </div>
 
-                        {/* Meet your Host */}
-                        {property.host && (
-                            <div className="mb-8 pb-8 border-b border-gray-200">
-                                <h2 className="text-xl font-semibold text-gray-900 mb-6">تعرّف على المضيف</h2>
-                                <div className="flex items-center gap-5">
-                                    <Link href={`/profile/${property.host_id}`} className="shrink-0">
-                                        {property.host.avatar_url ? (
-                                            <img
-                                                src={property.host.avatar_url}
-                                                alt={property.host.full_name || "المضيف"}
-                                                className="w-16 h-16 rounded-full object-cover ring-2 ring-primary/20"
-                                            />
-                                        ) : (
-                                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
-                                                <User className="h-8 w-8 text-primary" />
-                                            </div>
-                                        )}
-                                    </Link>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="text-lg font-semibold text-gray-900">
-                                                {property.host.full_name || "مضيف"}
-                                            </h3>
-                                            {property.host.is_identity_verified && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
-                                                    <BadgeCheck className="h-3.5 w-3.5" />
-                                                    موثّق
-                                                </span>
-                                            )}
-                                        </div>
-                                        <Link
-                                            href={`/profile/${property.host_id}`}
-                                            className="inline-flex items-center gap-2 px-5 py-2 mt-2 border border-secondary text-secondary text-sm font-medium rounded-lg hover:bg-secondary/10 transition-colors"
-                                        >
-                                            عرض الملف الشخصي
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Map Section */}
-                        <div className="pb-8">
-                            <h2 className="text-xl font-semibold text-gray-900 mb-2">أين ستكون</h2>
-                            <p className="text-gray-600 mb-6">{property.city}</p>
-                            <div className="rounded-2xl overflow-hidden">
+                        {/* ④ Map — condensed */}
+                        <div className="py-8">
+                            <h2 className="text-xl font-semibold text-gray-900 mb-1">أين ستكون</h2>
+                            <p className="text-gray-500 text-sm mb-4">{property.city}</p>
+                            <div className="h-80 rounded-2xl overflow-hidden shadow-md">
                                 <PropertyMap lat={property.location_lat} lng={property.location_lng} />
                             </div>
                         </div>
@@ -274,6 +276,7 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
                     {/* Booking Widget */}
                     <BookingWidget key={property.id} property={property} />
                 </div>
+
                 {/* Bottom spacer for mobile booking bar */}
                 <div className="h-20 md:hidden" />
             </main>
@@ -282,3 +285,4 @@ export default async function PropertyDetailsPage({ params }: { params: Promise<
         </div>
     );
 }
+

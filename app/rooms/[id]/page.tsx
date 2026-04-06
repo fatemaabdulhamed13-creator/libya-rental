@@ -48,8 +48,8 @@ export default function RoomDetailsPage() {
             // Fetch host profile
             if (propertyData?.host_id) {
                 const { data: hostData } = await supabase
-                    .from("public_profiles_view")
-                    .select("id, full_name, avatar_url, is_identity_verified, verification_status")
+                    .from("profiles")
+                    .select("id, full_name, avatar_url, is_identity_verified, verification_status, phone_number")
                     .eq("id", propertyData.host_id)
                     .single();
 

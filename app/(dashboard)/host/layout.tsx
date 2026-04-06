@@ -13,9 +13,11 @@ export default function HostLayout({ children }: { children: React.ReactNode }) 
     useEffect(() => {
         const init = async () => {
             const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
+            // getUser() does a server round-trip to verify the cookie session.
+            // getSession() only reads localStorage and returns null with SSR cookie auth.
+            const { data: { user } } = await supabase.auth.getUser();
 
-            if (!session) {
+            if (!user) {
                 router.push("/login");
                 return;
             }

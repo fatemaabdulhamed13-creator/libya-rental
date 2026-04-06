@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
     Loader2, CalendarDays, LayoutDashboard, History
 } from "lucide-react";
@@ -167,22 +166,20 @@ export default function HostBookingsPage() {
     const today = startOfDay(new Date());
 
     const fetchBookings = async () => {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data } = await supabase
-            .from("bookings")
-            .select(`
-                *,
-                guest:profiles!guest_id(full_name),
-                property:properties(title, images)
-            `)
-            .eq("host_id", user.id)
-            .order("created_at", { ascending: false });
-
-        if (data) setBookings(data);
-        setLoading(false);
+        try {
+            const res = await fetch('/api/host/bookings', { cache: 'no-store' });
+            if (!res.ok) {
+                console.error('[HostBookingsPage] API error:', res.status);
+                setLoading(false);
+                return;
+            }
+            const { bookings: data } = await res.json();
+            if (data) setBookings(data);
+        } catch (err) {
+            console.error('[HostBookingsPage] fetch error:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -193,21 +190,28 @@ export default function HostBookingsPage() {
 
     // ── panel action wrappers ─────────────────────────────────────────────────
 
-    const panelAccept = async (b: BookingForPanel) => {
-        const supabase = createClient();
-        const newStatus = b.payment_method === "bank_transfer" ? "awaiting_payment" : "confirmed";
-        await supabase.from("bookings").update({ status: newStatus as any }).eq("id", b.id);
+    const updateBookingStatus = async (bookingId: string, status: string) => {
+        const res = await fetch('/api/host/bookings/update-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId, status }),
+        });
+        if (!res.ok) {
+            const json = await res.json();
+            console.error('[HostBookingsPage] status update error:', json.error);
+        }
         await fetchBookings();
+    };
+
+    const panelAccept = async (b: BookingForPanel) => {
+        const newStatus = b.payment_method === "bank_transfer" ? "awaiting_payment" : "confirmed";
+        await updateBookingStatus(b.id, newStatus);
     };
     const panelDecline = async (id: string) => {
-        const supabase = createClient();
-        await supabase.from("bookings").update({ status: "rejected" }).eq("id", id);
-        await fetchBookings();
+        await updateBookingStatus(id, "rejected");
     };
     const panelConfirmPayment = async (id: string) => {
-        const supabase = createClient();
-        await supabase.from("bookings").update({ status: "confirmed" }).eq("id", id);
-        await fetchBookings();
+        await updateBookingStatus(id, "confirmed");
     };
 
     // ── derived data ──────────────────────────────────────────────────────────
